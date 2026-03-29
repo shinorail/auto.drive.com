@@ -3,227 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 乗務員支援 Pro</title>
+    <title>館浜電鉄 乗務支援システム Pro</title>
     
-    <link rel="manifest" href="data:application/manifest+json,{'name':'館浜電鉄乗務員用','short_name':'乗務支援','start_url':'.','display':'standalone','background_color':'#000000','theme_color':'#f44336','icons':[{'src':'https://via.placeholder.com/192/f44336/ffffff?text=運','sizes':'192x192','type':'image/png'}]}">
+    <link rel="manifest" href="data:application/manifest+json,{'name':'館浜電鉄乗務支援','short_name':'乗務支援','start_url':'.','display':'standalone','background_color':'#000000','theme_color':'#ff3b30'}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <style>
         :root {
-            --bg-color: #000000;
-            --card-bg: #1c1c1e;
-            --text-main: #ffffff;
-            --accent-stop: #ffcc00;
-            --checked-bg: #2c2c2e;
-            --checked-text: #636366;
+            --bg: #000000;
+            --panel: #1c1c1e;
+            --text: #ffffff;
+            --accent: #ffcc00;
+            --stop-border: #ffcc00;
+            --pass-border: #444446;
+            --danger: #ff3b30;
+            --success: #28a745;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+            user-select: none;
             -webkit-user-select: none;
-            touch-action: manipulation; /* ダブルタップズーム防止 */
         }
 
+        /* ヘッダー：計器類 */
         header {
             position: sticky;
             top: 0;
             background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
             padding: 10px 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #333;
-            z-index: 100;
+            z-index: 1000;
         }
 
-        #current-time { font-size: 26px; font-weight: bold; font-family: 'Courier New', monospace; }
-        #wake-status { font-size: 11px; padding: 4px 10px; border-radius: 12px; background: #333; transition: 0.3s; }
-        #wake-status.active { background: #28a745; box-shadow: 0 0 8px #28a745; }
+        .clock-area { display: flex; flex-direction: column; }
+        #clock { font-size: 28px; font-weight: bold; font-family: monospace; line-height: 1; }
+        #date { font-size: 10px; color: #888; }
 
-        .type-selector {
+        .status-badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #333;
+            text-align: center;
+        }
+        .status-badge.on { background: var(--success); box-shadow: 0 0 5px var(--success); }
+
+        /* 種別選択 */
+        .type-nav {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 2px;
             background: #000;
-            padding: 2px;
+            padding: 5px;
+            gap: 2px;
         }
 
-        .type-btn {
+        .t-btn {
             border: none;
-            padding: 18px 0;
+            padding: 15px 0;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 12px;
             color: #fff;
             opacity: 0.3;
+            transition: 0.2s;
+        }
+        .t-btn.active { opacity: 1; transform: scale(1.05); z-index: 10; border: 1px solid #fff; }
+        .t-local { background: #666; }
+        .t-semi { background: #007aff; }
+        .t-express { background: #ff9500; }
+        .t-rapid { background: #af52de; }
+        .t-limited { background: #ff3b30; }
+
+        /* カウンター表示 */
+        .counter-bar {
+            background: #222;
+            padding: 5px 15px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            color: var(--accent);
         }
 
-        .type-btn.active { opacity: 1; position: relative; }
-        .type-btn.active::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: #fff; }
+        /* メインリスト */
+        .list { padding: 5px; padding-bottom: 120px; }
 
-        .type-local { background: #555; }
-        .type-semi { background: #007aff; }
-        .type-express { background: #ff9500; }
-        .type-rapid { background: #af52de; }
-        .type-limited { background: #ff3b30; }
-
-        .station-list { padding: 4px; }
-
-        .station-row {
+        .row {
             display: flex;
             align-items: center;
-            height: 70px;
-            margin-bottom: 4px;
-            background: var(--card-bg);
-            border-radius: 8px;
-            transition: all 0.1s ease;
-            cursor: pointer;
+            min-height: 75px;
+            margin-bottom: 6px;
+            background: var(--panel);
+            border-radius: 10px;
+            transition: 0.2s;
+            position: relative;
+            overflow: hidden;
         }
 
-        /* 停車駅の強調表示 */
-        .station-row.stop { border-left: 12px solid var(--accent-stop); }
-        .station-row.pass { opacity: 0.4; border-left: 12px solid #444; }
+        .row.stop { border-left: 12px solid var(--stop-border); }
+        .row.pass { border-left: 12px solid var(--pass-border); opacity: 0.4; }
 
-        /* チェック済み（通過済み）の状態 */
-        .station-row.checked {
-            background: var(--checked-bg);
-            opacity: 0.2;
-            transform: scale(0.98);
-            border-left-color: #555 !important;
-        }
-
-        .indicator {
-            width: 60px;
-            text-align: center;
+        /* チェック済み */
+        .row.done { opacity: 0.15 !important; transform: scale(0.97); }
+        .row.done::after {
+            content: "PASS";
+            position: absolute;
+            right: 20px;
             font-weight: bold;
-            font-size: 13px;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            padding: 2px 10px;
+            transform: rotate(-15deg);
+            font-size: 20px;
         }
-        .stop .indicator { color: var(--accent-stop); }
 
-        .name-group { flex: 1; margin-left: 10px; }
-        .name-ja { font-size: 22px; font-weight: bold; }
+        .type-label { width: 50px; text-align: center; font-size: 12px; font-weight: bold; }
+        .stop .type-label { color: var(--accent); }
 
-        .check-mark {
-            width: 40px;
-            font-size: 24px;
-            color: var(--accent-stop);
-            visibility: hidden;
+        .name-box { flex: 1; margin-left: 15px; }
+        .st-name { font-size: 24px; font-weight: bold; display: block; }
+        
+        /* ツールエリア（下部固定） */
+        .tools {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: #111;
+            display: flex;
+            padding: 10px 0;
+            border-top: 1px solid #333;
+            justify-content: space-around;
         }
-        .checked .check-mark { visibility: visible; }
 
-        @media (min-width: 768px) {
-            .station-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .tool-btn {
+            background: #333;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .tool-btn.danger { background: var(--danger); }
+
+        /* メモ帳モーダル */
+        #memo-pad {
+            display: none;
+            position: fixed;
+            top: 20%;
+            left: 5%;
+            width: 90%;
+            height: 50%;
+            background: #fff;
+            color: #000;
+            z-index: 2000;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        #memo-pad textarea { width: 100%; height: 80%; border: none; font-size: 18px; }
+
+        /* 操作ロック表示 */
+        #lock-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 3000;
+            text-align: center;
+            padding-top: 50%;
         }
     </style>
 </head>
-<body>
+<body onload="init()">
 
 <header>
-    <div id="current-time">00:00:00</div>
-    <div id="wake-status">SLEEP禁止: OFF</div>
+    <div class="clock-area">
+        <span id="date">2026/03/29</span>
+        <span id="clock">00:00:00</span>
+    </div>
+    <div id="wake-badge" class="status-badge">WAKE LOCK OFF</div>
 </header>
 
-<nav class="type-selector">
-    <button class="type-btn type-local active" onclick="updateView('local', this)">普通</button>
-    <button class="type-btn type-semi" onclick="updateView('semi', this)">準急</button>
-    <button class="type-btn type-express" onclick="updateView('express', this)">急行</button>
-    <button class="type-btn type-rapid" onclick="updateView('rapid', this)">快急</button>
-    <button class="type-btn type-limited" onclick="updateView('limited', this)">特急</button>
+<nav class="type-nav">
+    <button class="t-btn t-local active" onclick="chgType('local', this)">普通</button>
+    <button class="t-btn t-semi" onclick="chgType('semi', this)">準急</button>
+    <button class="t-btn t-express" onclick="chgType('express', this)">急行</button>
+    <button class="t-btn t-rapid" onclick="chgType('rapid', this)">快急</button>
+    <button class="t-btn t-limited" onclick="chgType('limited', this)">特急</button>
 </nav>
 
-<main class="station-list" id="list-container"></main>
+<div class="counter-bar">
+    <span id="remain-count">残り: 19駅</span>
+    <span id="next-stop">次駅: --</span>
+</div>
+
+<main class="list" id="list"></main>
+
+<div id="memo-pad">
+    <strong>通告・メモ</strong>
+    <textarea id="memo-text" placeholder="ここにメモを入力..."></textarea>
+    <button onclick="toggleMemo()">閉じる</button>
+</div>
+
+<div id="lock-overlay" onclick="toggleLock()">
+    <div style="background:white; color:black; display:inline-block; padding:20px; border-radius:10px;">
+        🔒 画面ロック中<br><small>タップで解除</small>
+    </div>
+</div>
+
+<div class="tools">
+    <button class="tool-btn" onclick="toggleLock()">操作ロック</button>
+    <button class="tool-btn" onclick="toggleMemo()">メモ帳</button>
+    <button class="tool-btn danger" ontouchstart="playBuzzer()" ontouchend="stopBuzzer()">非常警笛</button>
+    <button class="tool-btn" onclick="resetCheck()">リセット</button>
+</div>
 
 <script>
-    const data = [
-        { name: "赤山町", stops: [1,1,1,1,1] },
-        { name: "西赤山", stops: [1,1,1,0,0] },
-        { name: "奥峯口", stops: [1,1,1,0,0] },
-        { name: "日野森", stops: [1,1,1,1,0] },
-        { name: "高見沢", stops: [1,1,1,0,0] },
-        { name: "水越", stops: [1,1,1,1,0] },
-        { name: "藤江", stops: [1,1,1,1,0] },
-        { name: "大道寺", stops: [1,1,1,1,1] },
-        { name: "江ノ原", stops: [1,1,1,0,0] },
-        { name: "新野崎", stops: [1,1,1,1,0] },
-        { name: "新井川", stops: [1,0,0,0,0] },
-        { name: "羽衣橋", stops: [1,0,0,0,0] },
-        { name: "浜園", stops: [1,1,0,0,0] },
-        { name: "津崎", stops: [1,0,0,0,0] },
-        { name: "虹ケ浜", stops: [1,0,0,0,0] },
-        { name: "海岸公園", stops: [1,0,0,0,0] },
-        { name: "河原崎", stops: [1,0,0,0,0] },
-        { name: "駒野", stops: [1,1,0,0,0] },
-        { name: "館浜", stops: [1,1,1,1,1] }
+    const stations = [
+        { n: "赤山町", s: [1,1,1,1,1] }, { n: "西赤山", s: [1,1,1,0,0] }, { n: "奥峯口", s: [1,1,1,0,0] },
+        { n: "日野森", s: [1,1,1,1,0] }, { n: "高見沢", s: [1,1,1,0,0] }, { n: "水越", s: [1,1,1,1,0] },
+        { n: "藤江", s: [1,1,1,1,0] }, { n: "大道寺", s: [1,1,1,1,1] }, { n: "江ノ原", s: [1,1,1,0,0] },
+        { n: "新野崎", s: [1,1,1,1,0] }, { n: "新井川", s: [1,0,0,0,0] }, { n: "羽衣橋", s: [1,0,0,0,0] },
+        { n: "浜園", s: [1,1,0,0,0] }, { n: "津崎", s: [1,0,0,0,0] }, { n: "虹ケ浜", s: [1,0,0,0,0] },
+        { n: "海岸公園", s: [1,0,0,0,0] }, { n: "河原崎", s: [1,0,0,0,0] }, { n: "駒野", s: [1,1,0,0,0] },
+        { n: "館浜", s: [1,1,1,1,1] }
     ];
 
-    const typeIdx = { local: 0, semi: 1, express: 2, rapid: 3, limited: 4 };
-    let currentWakeLock = null;
+    const idxMap = { local: 0, semi: 1, express: 2, rapid: 3, limited: 4 };
+    let currentType = 'local';
+    let lock = null;
 
-    function updateView(type, btn) {
-        // 全ボタンのリセット
-        document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        const container = document.getElementById('list-container');
-        container.innerHTML = '';
-        
-        data.forEach(st => {
-            const isStop = st.stops[typeIdx[type]];
-            const row = document.createElement('div');
-            row.className = `station-row ${isStop ? 'stop' : 'pass'}`;
-            
-            row.innerHTML = `
-                <div class="indicator">${isStop ? '停車' : '通過'}</div>
-                <div class="name-group"><span class="name-ja">${st.name}</span></div>
-                <div class="check-mark">✓</div>
-            `;
-
-            // タップでチェックを入れる機能
-            row.addEventListener('click', () => {
-                row.classList.toggle('checked');
-                // タップのたびにWakeLockを確実にする
-                requestWakeLock();
-            });
-
-            container.appendChild(row);
-        });
+    function init() {
+        render();
+        updateTime();
+        setInterval(updateTime, 1000);
+        // PWA用のダミーSW
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:application/javascript,self.addEventListener("fetch",function(e){})');
+        }
     }
 
-    // スリープ禁止 (Screen Wake Lock API)
-    async function requestWakeLock() {
+    function render() {
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+        stations.forEach((st, i) => {
+            const isStop = st.s[idxMap[currentType]];
+            const div = document.createElement('div');
+            div.className = `row ${isStop ? 'stop' : 'pass'}`;
+            div.onclick = () => { div.classList.toggle('done'); updateCounter(); keepWake(); };
+            div.innerHTML = `
+                <div class="type-label">${isStop ? '停車' : '通過'}</div>
+                <div class="name-box"><span class="st-name">${st.n}</span></div>
+            `;
+            list.appendChild(div);
+        });
+        updateCounter();
+    }
+
+    function chgType(t, btn) {
+        currentType = t;
+        document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+        keepWake();
+    }
+
+    function updateCounter() {
+        const total = stations.length;
+        const done = document.querySelectorAll('.done').length;
+        document.getElementById('remain-count').innerText = `残り: ${total - done}駅 / 全${total}駅`;
+        
+        const next = Array.from(document.querySelectorAll('.row:not(.done).stop'))[0];
+        document.getElementById('next-stop').innerText = next ? `次停: ${next.querySelector('.st-name').innerText}` : "終点";
+    }
+
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString('ja-JP', {hour12:false});
+        document.getElementById('date').innerText = now.toLocaleDateString();
+    }
+
+    // スリープ禁止
+    async function keepWake() {
         if ('wakeLock' in navigator) {
             try {
-                currentWakeLock = await navigator.wakeLock.request('screen');
-                const status = document.getElementById('wake-status');
-                status.innerText = "SLEEP禁止: ON";
-                status.classList.add('active');
-            } catch (err) {
-                console.error(`${err.name}, ${err.message}`);
-            }
+                lock = await navigator.wakeLock.request('screen');
+                const badge = document.getElementById('wake-badge');
+                badge.innerText = "WAKE LOCK ACTIVE";
+                badge.classList.add('on');
+            } catch (e) {}
         }
     }
 
-    // 時計の更新
-    setInterval(() => {
-        const now = new Date();
-        document.getElementById('current-time').innerText = now.toLocaleTimeString('ja-JP', {hour12: false});
-    }, 1000);
+    // 非常ブザー音 (Web Audio API)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let oscillator;
+    function playBuzzer() {
+        oscillator = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
+        oscillator.connect(gain);
+        gain.connect(audioCtx.destination);
+        oscillator.start();
+    }
+    function stopBuzzer() { if(oscillator) oscillator.stop(); }
 
-    // 画面復帰時の処理
-    document.addEventListener('visibilitychange', async () => {
-        if (currentWakeLock !== null && document.visibilityState === 'visible') {
-            await requestWakeLock();
-        }
-    });
-
-    // 初期表示
-    updateView('local', document.querySelector('.type-local'));
+    // 各種ツール
+    function toggleMemo() {
+        const m = document.getElementById('memo-pad');
+        m.style.display = m.style.display === 'block' ? 'none' : 'block';
+    }
+    function toggleLock() {
+        const l = document.getElementById('lock-overlay');
+        l.style.display = l.style.display === 'block' ? 'none' : 'block';
+    }
+    function resetCheck() {
+        if(confirm("チェックをリセットしますか？")) render();
+    }
 </script>
-
 </body>
 </html>
