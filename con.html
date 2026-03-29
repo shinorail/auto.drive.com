@@ -14,7 +14,6 @@
         .st-btn { width: 100%; text-align: left; padding: 16px; margin-bottom: 6px; background: #222; border-left: 8px solid #444; border-radius: 4px; font-size: 16px; display: block; }
         .stop { border-left-color: #2ecc71; opacity: 1; }
         .pass { border-left-color: #555; opacity: 0.2; pointer-events: none; }
-        
         #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; border-top: 1px solid #444; z-index: 100; }
         #mic-btn { width: 90%; height: 70px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 18px; font-weight: bold; border-radius: 10px; }
         #mic-btn:active { background: #fff; color: #ff3b30; }
@@ -25,7 +24,7 @@
 <body onload="init()">
     <div id="status" style="text-align:center; font-size:11px; padding:5px; color:#aaa;">接続待機中</div>
 
-    <div class="label">1. 運行方面 (駅リストの並び替え)</div>
+    <div class="label">1. 運行方面</div>
     <div class="grid" style="grid-template-columns: 1fr 1fr;">
         <button id="b-katihama" onclick="setDirection('館浜')">館浜 方面</button>
         <button id="b-akayama" onclick="setDirection('赤山町')">赤山町 方面</button>
@@ -37,39 +36,29 @@
     <div class="label">3. 終着駅 (行先)</div>
     <div id="dest-grid" class="grid"></div>
 
-    <div class="label">4. 現在駅を選択 (PCへ送信)</div>
+    <div class="label">4. 現在駅を選択</div>
     <div id="station-list"></div>
 
     <div id="mic-container">
         <div id="v-meter-wrap"><div id="v-meter-bar"></div></div>
-        <button id="mic-btn">🎤 放送ボタン (長押し中のみ送信)</button>
+        <button id="mic-btn">🎤 放送ボタン (長押し)</button>
     </div>
 
     <script>
-        // 路線データ設定
         const config = {
             types: ["普通", "準急", "急行", "快急", "特急"],
             dests: ["館浜", "新井川", "赤山町"],
             stations: [
-                { name: "赤山町", stop: [1,1,1,1,1], isTerminal: false }, 
-                { name: "西赤山", stop: [1,1,1,0,0], isTerminal: false },
-                { name: "奥峯口", stop: [1,1,1,0,0], isTerminal: false },
-                { name: "日野森", stop: [1,1,1,1,0], isTerminal: false },
-                { name: "高見沢", stop: [1,1,1,0,0], isTerminal: false },
-                { name: "水越",   stop: [1,1,1,1,0], isTerminal: false },
-                { name: "藤江",   stop: [1,1,1,1,0], isTerminal: false },
-                { name: "大道寺", stop: [1,1,1,1,1], isTerminal: false },
-                { name: "江ノ原", stop: [1,1,1,0,0], isTerminal: false },
-                { name: "新野崎", stop: [1,1,1,1,0], isTerminal: false },
-                { name: "新井川", stop: [1,1,1,1,1], isTerminal: true }, // 途中終着駅
-                { name: "羽衣橋", stop: [1,0,0,0,0], isTerminal: false },
-                { name: "浜園",   stop: [1,1,0,0,0], isTerminal: false },
-                { name: "津崎",   stop: [1,0,0,0,0], isTerminal: false },
-                { name: "虹ケ浜", stop: [1,0,0,0,0], isTerminal: false },
-                { name: "海岸公園", stop: [1,0,0,0,0], isTerminal: false },
-                { name: "河原崎", stop: [1,0,0,0,0], isTerminal: false },
-                { name: "駒野",   stop: [1,1,0,0,0], isTerminal: false },
-                { name: "館浜",   stop: [1,1,1,1,1], isTerminal: true }  // 路線端の終点
+                { name: "赤山町", stop: [1,1,1,1,1] }, { name: "西赤山", stop: [1,1,1,0,0] },
+                { name: "奥峯口", stop: [1,1,1,0,0] }, { name: "日野森", stop: [1,1,1,1,0] },
+                { name: "高見沢", stop: [1,1,1,0,0] }, { name: "水越",   stop: [1,1,1,1,0] },
+                { name: "藤江",   stop: [1,1,1,1,0] }, { name: "大道寺", stop: [1,1,1,1,1] },
+                { name: "江ノ原", stop: [1,1,1,0,0] }, { name: "新野崎", stop: [1,1,1,1,0] },
+                { name: "新井川", stop: [1,1,1,1,1] }, { name: "羽衣橋", stop: [1,0,0,0,0] },
+                { name: "浜園",   stop: [1,1,0,0,0] }, { name: "津崎",   stop: [1,0,0,0,0] },
+                { name: "虹ケ浜", stop: [1,0,0,0,0] }, { name: "海岸公園", stop: [1,0,0,0,0] },
+                { name: "河原崎", stop: [1,0,0,0,0] }, { name: "駒野",   stop: [1,1,0,0,0] },
+                { name: "館浜",   stop: [1,1,1,1,1] }
             ]
         };
 
@@ -102,7 +91,7 @@
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id, { reliable: true });
-                conn.on('open', () => { document.getElementById('status').innerText = "● PCに接続しました"; });
+                conn.on('open', () => { document.getElementById('status').innerText = "● PCに接続完了"; });
             });
             updateUI();
         }
@@ -115,8 +104,6 @@
 
             const list = document.getElementById('station-list'); list.innerHTML = '';
             const typeIdx = config.types.indexOf(selType);
-            
-            // 方面によってリストを並び替え
             let displayStations = [...config.stations];
             if(selBound === "赤山町") displayStations.reverse();
 
@@ -126,26 +113,17 @@
                 b.className = `st-btn ${isStop ? 'stop' : 'pass'}`;
                 b.innerText = st.name;
                 
-                // 今回選択した「行先（selDest）」より先にある駅は無効化する処理
-                let destReached = false;
-                for(let k=0; k < i; k++) {
-                    if(displayStations[k].name === selDest) destReached = true;
-                }
-                if(destReached) b.style.display = 'none';
+                let isAfterDest = false;
+                for(let k=0; k < i; k++) { if(displayStations[k].name === selDest) isAfterDest = true; }
+                if(isAfterDest) b.style.display = 'none';
 
-                if(isStop && !destReached) {
+                if(isStop && !isAfterDest) {
                     b.onclick = () => {
                         let next = "";
-                        // 現在の行先（selDest）がこの駅なら終点
-                        if (st.name === selDest) {
-                            next = "終点";
-                        } else {
-                            // 次の停車駅を、行先までの範囲で探す
+                        if (st.name === selDest) { next = "終点"; } 
+                        else {
                             for (let j = i + 1; j < displayStations.length; j++) {
-                                if (displayStations[j].stop[typeIdx] === 1) {
-                                    next = displayStations[j].name;
-                                    break;
-                                }
+                                if (displayStations[j].stop[typeIdx] === 1) { next = displayStations[j].name; break; }
                                 if (displayStations[j].name === selDest) break;
                             }
                             if (!next) next = "終点";
