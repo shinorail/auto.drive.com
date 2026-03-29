@@ -2,201 +2,53 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 運行管理システム Pro Max</title>
-    
-    <link rel="manifest" href="data:application/manifest+json,{'name':'館浜運行システム','short_name':'運行システム','start_url':'.?mode=mb','display':'standalone','background_color':'#000000','theme_color':'#ff3b30'}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
+    <title>館浜電鉄 案内表示システム</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --text: #fff; --accent: #ffcc00; --danger: #ff3b30; --success: #28a745; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-
-        /* モード選択（パラメータがない時だけ表示） */
-        #setup { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 20px; }
-        .mode-btn { width: 85%; padding: 30px; border-radius: 15px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .pc-btn { background: #333; color: #fff; }
-        .mb-btn { background: var(--accent); color: #000; }
-
-        /* PC画面 */
-        #pc-view { display: none; height: 100vh; flex-direction: column; justify-content: center; text-align: center; }
-        #pc-st-name { font-size: 10vw; font-weight: bold; border-bottom: 8px solid var(--accent); margin: 0 5%; }
-        #pc-status { font-size: 4vw; color: var(--danger); margin-top: 50px; height: 60px; }
-
-        /* スマホ画面 */
-        #mb-view { display: none; padding-bottom: 160px; }
-        header { position: sticky; top: 0; background: rgba(0,0,0,0.9); padding: 10px 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #333; z-index: 1000; }
-        #clock { font-size: 26px; font-weight: bold; font-family: monospace; }
-        .conn-tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: #333; }
-        .conn-tag.on { background: var(--success); }
-
-        .type-nav { display: grid; grid-template-columns: repeat(5, 1fr); background: #000; }
-        .t-btn { border: none; padding: 15px 0; font-size: 11px; font-weight: bold; color: #fff; opacity: 0.3; }
-        .t-btn.active { opacity: 1; border-bottom: 4px solid #fff; }
-        .t-local { background: #666; } .t-semi { background: #007aff; } .t-express { background: #ff9500; } .t-rapid { background: #af52de; } .t-limited { background: #ff3b30; }
-
-        .list { padding: 5px; }
-        .row { display: flex; align-items: center; min-height: 70px; margin-bottom: 5px; background: var(--panel); border-radius: 10px; border-left: 10px solid #444; position: relative; }
-        .row.stop { border-left-color: var(--accent); }
-        .row.done { opacity: 0.2; transform: scale(0.96); }
-        .row.done::after { content: "PASS"; position: absolute; right: 20px; color: var(--accent); border: 2px solid var(--accent); padding: 2px 5px; transform: rotate(-15deg); font-weight: bold; }
-        .st-name { font-size: 20px; font-weight: bold; margin-left: 15px; }
-
-        .tools { position: fixed; bottom: 0; width: 100%; background: #111; padding-top: 10px; border-top: 1px solid #333; }
-        .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 0 10px 10px; }
-        .tool-btn { background: #333; border: none; color: #fff; padding: 10px 0; border-radius: 5px; font-size: 10px; }
-        .mic-btn { width: 70px; height: 70px; border-radius: 50%; background: #222; border: 4px solid #444; color: #fff; font-weight: bold; }
-        .mic-btn.active { background: var(--danger); border-color: #fff; transform: scale(1.1); }
-
-        #memo-pad, #lock-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5000; background: rgba(0,0,0,0.8); }
-        #memo-content { width: 80%; height: 60%; background: #fff; margin: 20% auto; padding: 20px; border-radius: 15px; color: #000; }
-        #memo-content textarea { width: 100%; height: 80%; width: 100%; font-size: 18px; }
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #st-name { font-size: 10vw; font-weight: bold; border-bottom: 8px solid #ffcc00; padding-bottom: 20px; width: 85%; text-align: center; }
+        #qr-area { position: fixed; top: 20px; right: 20px; background: #fff; padding: 10px; border-radius: 10px; text-align: center; }
+        #qr-area p { color: #000; margin: 5px 0 0; font-size: 12px; font-weight: bold; }
+        #status-msg { font-size: 4vw; color: #ff3b30; margin-top: 50px; font-weight: bold; }
     </style>
 </head>
-<body onload="checkParams()">
-
-<div id="setup">
-    <h1>館浜電鉄 運行システム</h1>
-    <button class="mode-btn pc-btn" onclick="startPC()">PC（親機：表示・スピーカー）</button>
-    <button class="mode-btn mb-btn" onclick="startMB()">スマホ（子機：リモコン・マイク）</button>
-    <p style="font-size:10px; color:#666;">パラメータ: ?mode=pc または ?mode=mb</p>
-</div>
-
-<div id="pc-view">
-    <div id="pc-st-name">案内待機中</div>
-    <div id="pc-status"></div>
-    <audio id="remote-audio" autoplay></audio>
-</div>
-
-<div id="mb-view">
-    <header>
-        <div id="clock">00:00:00</div>
-        <div id="conn-tag" class="conn-tag">未接続</div>
-    </header>
-    <nav class="type-nav">
-        <button class="t-btn t-local active" onclick="chgType('local', this)">普通</button>
-        <button class="t-btn t-semi" onclick="chgType('semi', this)">準急</button>
-        <button class="t-btn t-express" onclick="chgType('express', this)">急行</button>
-        <button class="t-btn t-rapid" onclick="chgType('rapid', this)">快急</button>
-        <button class="t-btn t-limited" onclick="chgType('limited', this)">特急</button>
-    </nav>
-    <div id="remain" style="background:#222; padding:5px; font-size:12px; color:var(--accent); text-align:center;"></div>
-    <div class="list" id="st-list"></div>
-    <div class="tools">
-        <div class="tool-grid">
-            <button class="tool-btn" onclick="toggleLock()">操作ロック</button>
-            <button class="tool-btn" onclick="toggleMemo()">メモ帳</button>
-            <button class="tool-btn" onclick="sendCmd('⚠️ ドアが閉まります')">ドア閉</button>
-            <button class="tool-btn" style="background:var(--danger)" ontouchstart="playBz()" ontouchend="stopBz()">非常警笛</button>
-        </div>
-        <div style="display:flex; justify-content:center; align-items:center; gap:20px; padding-bottom:10px;">
-            <button class="tool-btn" style="width:60px" onclick="sendCmd('🎵 発車メロディ')">発メロ</button>
-            <button id="mic-btn" class="mic-btn" ontouchstart="micOn()" ontouchend="micOff()" onmousedown="micOn()" onmouseup="micOff()">🎤 放送</button>
-            <button class="tool-btn" style="width:60px" onclick="resetCheck()">リセット</button>
-        </div>
+<body>
+    <div id="st-name">接続待機中</div>
+    <div id="status-msg"></div>
+    <div id="qr-area">
+        <div id="qrcode"></div>
+        <p>スマホでスキャン</p>
     </div>
-</div>
+    <audio id="remote-audio" autoplay></audio>
 
-<div id="memo-pad"><div id="memo-content"><h3>メモ</h3><textarea id="memo-text"></textarea><br><button onclick="toggleMemo()">閉じる</button></div></div>
-<div id="lock-overlay" onclick="toggleLock()"><div style="color:#fff; text-align:center; padding-top:80vh;">🔒 ロック中 / タップで解除</div></div>
+    <script>
+        // ランダムなIDを生成（これがペアリングキーになります）
+        const pairID = "TH-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const peer = new Peer(pairID);
 
-<script>
-    const stations = [
-        { n: "赤山町", s: [1,1,1,1,1] }, { n: "西赤山", s: [1,1,1,0,0] }, { n: "奥峯口", s: [1,1,1,0,0] },
-        { n: "日野森", s: [1,1,1,1,0] }, { n: "高見沢", s: [1,1,1,0,0] }, { n: "水越", s: [1,1,1,1,0] },
-        { n: "藤江", s: [1,1,1,1,0] }, { n: "大道寺", s: [1,1,1,1,1] }, { n: "江ノ原", s: [1,1,1,0,0] },
-        { n: "新野崎", s: [1,1,1,1,0] }, { n: "新井川", s: [1,0,0,0,0] }, { n: "羽衣橋", s: [1,0,0,0,0] },
-        { n: "浜園", s: [1,1,0,0,0] }, { n: "津崎", s: [1,0,0,0,0] }, { n: "虹ケ浜", s: [1,0,0,0,0] },
-        { n: "海岸公園", s: [1,0,0,0,0] }, { n: "河原崎", s: [1,0,0,0,0] }, { n: "駒野", s: [1,1,0,0,0] },
-        { n: "館浜", s: [1,1,1,1,1] }
-    ];
-    const idxMap = { local: 0, semi: 1, express: 2, rapid: 3, limited: 4 };
-    const MASTER_ID = "TATEHAMA-ZEN-NODE-2026";
-    let peer, conn, call, currentType = 'local';
+        peer.on('open', id => {
+            // 現在のURLにパラメータを付けてQRコード化
+            const url = window.location.href.split('?')[0].replace('index.html', '') + "con.html?id=" + id;
+            new QRCode(document.getElementById("qrcode"), { text: url, width: 128, height: 128 });
+        });
 
-    function checkParams() {
-        const params = new URLSearchParams(window.location.search);
-        const mode = params.get('mode');
-        if (mode === 'pc') startPC();
-        else if (mode === 'mb') startMB();
-        
-        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('ja-JP', {hour12:false}); }, 1000);
-    }
-
-    function startPC() {
-        document.getElementById('setup').style.display = 'none';
-        document.getElementById('pc-view').style.display = 'flex';
-        peer = new Peer(MASTER_ID);
-        peer.on('connection', c => {
-            conn = c;
+        peer.on('connection', conn => {
+            document.getElementById('st-name').innerText = "案内準備中";
+            document.getElementById('qr-area').style.display = 'none';
             conn.on('data', data => {
-                if(data.type === 'station') document.getElementById('pc-st-name').innerText = "次 は " + data.val;
-                if(data.type === 'cmd') { document.getElementById('pc-status').innerText = data.val; setTimeout(() => document.getElementById('pc-status').innerText = "", 3000); }
+                if(data.type === 'station') document.getElementById('st-name').innerText = "次 は " + data.val;
+                if(data.type === 'cmd') {
+                    document.getElementById('status-msg').innerText = data.val;
+                    setTimeout(() => document.getElementById('status-msg').innerText = "", 4000);
+                }
             });
         });
-        peer.on('call', c => { c.answer(); c.on('stream', s => document.getElementById('remote-audio').srcObject = s); });
-    }
 
-    function startMB() {
-        document.getElementById('setup').style.display = 'none';
-        document.getElementById('mb-view').style.display = 'block';
-        render();
-        peer = new Peer();
-        peer.on('open', () => {
-            conn = peer.connect(MASTER_ID);
-            conn.on('open', () => { document.getElementById('conn-tag').innerText = "接続済"; document.getElementById('conn-tag').classList.add('on'); });
+        peer.on('call', call => {
+            call.answer();
+            call.on('stream', s => document.getElementById('remote-audio').srcObject = s);
         });
-    }
-
-    function render() {
-        const list = document.getElementById('st-list');
-        list.innerHTML = '';
-        stations.forEach(st => {
-            const isStop = st.s[idxMap[currentType]];
-            const div = document.createElement('div');
-            div.className = `row ${isStop ? 'stop' : ''}`;
-            div.innerHTML = `<div style="width:40px; text-align:center; font-size:10px; color:var(--accent)">${isStop?'停車':''}</div><div class="st-name">${st.n}</div>`;
-            div.onclick = () => {
-                div.classList.toggle('done');
-                if(conn && !div.classList.contains('done')) conn.send({ type: 'station', val: st.n });
-                updateCount();
-                if('wakeLock' in navigator) navigator.wakeLock.request('screen');
-            };
-            list.appendChild(div);
-        });
-        updateCount();
-    }
-
-    function chgType(t, btn) {
-        currentType = t;
-        document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        render();
-    }
-
-    function updateCount() {
-        const done = document.querySelectorAll('.done').length;
-        document.getElementById('remain').innerText = `残り: ${stations.length - done}駅 / 全${stations.length}駅`;
-    }
-
-    async function micOn() {
-        document.getElementById('mic-btn').classList.add('active');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        call = peer.call(MASTER_ID, stream);
-    }
-    function micOff() { document.getElementById('mic-btn').classList.remove('active'); if(call) call.close(); }
-    function sendCmd(v) { if(conn) conn.send({ type: 'cmd', val: v }); }
-    function toggleMemo() { const m = document.getElementById('memo-pad'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
-    function toggleLock() { const l = document.getElementById('lock-overlay'); l.style.display = l.style.display === 'block' ? 'none' : 'block'; }
-    function resetCheck() { if(confirm("全クリアしますか？")) render(); }
-    
-    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let osc;
-    function playBz() { osc = audioCtx.createOscillator(); osc.type='square'; osc.frequency.value=880; osc.connect(audioCtx.destination); osc.start(); }
-    function stopBz() { if(osc) osc.stop(); }
-</script>
+    </script>
 </body>
 </html>
