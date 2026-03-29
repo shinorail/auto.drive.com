@@ -3,8 +3,14 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0;url=con.html">
-<title>ページ移動中</title>
+<title>リダイレクト中</title>
+<script>
+// ページ読み込み時に即座に実行
+window.onload = function() {
+const params = window.location.search;
+window.location.href = "con.html" + params;
+};
+</script>
 </head>
 <body>
 <p>自動的に移動します。移動しない場合は<a href="con.html">こちら</a>をクリックしてください。</p>
