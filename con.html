@@ -3,118 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜指令 V16</title>
+    <title>館浜電鉄 指令パネル (乗務員用)</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 180px; }
-        .sec { font-size: 10px; color: #0f0; margin: 10px 0; border-bottom: 1px solid #333; }
+        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 120px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 5px; margin-bottom: 10px; }
+        .group-label { font-size: 11px; color: #0f0; margin: 12px 0 5px; font-weight: bold; border-left: 4px solid #0f0; padding-left: 8px; }
         .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        button { background: #222; border: 1px solid #444; color: #fff; padding: 12px 0; font-size: 11px; border-radius: 4px; }
-        button.active { background: #0f0; color: #000; }
-        .sos { background: #900; grid-column: span 4; height: 40px; border: 2px solid red; font-size: 14px; }
-        .st-row { display: flex; align-items: center; background: #1a1a1a; margin-bottom: 4px; border-left: 5px solid #444; }
-        .st-num { width: 40px; text-align: center; font-size: 12px; color: #888; }
-        .st-btn { flex-grow: 1; text-align: left; padding: 15px; background: none; border: none; color: #fff; font-size: 16px; }
-        #mic-wrap { position: fixed; bottom: 0; left: 0; width: 100%; background: #000; padding: 15px 0; border-top: 2px solid #333; text-align: center; }
-        #mic-btn { width: 90%; height: 50px; background: #f33; color: #fff; border: none; border-radius: 10px; font-weight: bold; }
+        button { background: #222; border: 1px solid #444; color: #fff; padding: 12px 0; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        button.active { background: #0f0; color: #000; border-color: #0f0; }
+        .sos-btn { background: #900; grid-column: span 4; height: 45px; border: 2px solid red; font-size: 15px; margin-bottom: 10px; }
+        .st-row { display: flex; align-items: center; background: #1a1a1a; margin-bottom: 4px; border-left: 6px solid #444; }
+        .st-btn { flex-grow: 1; text-align: left; padding: 16px; background: none; border: none; color: #fff; font-size: 17px; }
+        #mic-panel { position: fixed; bottom: 0; left: 0; width: 100%; background: #000; padding: 15px 0; border-top: 2px solid #333; text-align: center; }
+        #mic-btn { width: 90%; height: 55px; background: #f33; color: #fff; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; }
     </style>
 </head>
 <body onload="init()">
-    <div id="stat" style="font-size:10px; color:#0f0; text-align:center;">OFFLINE</div>
+    <div class="header">
+        <div style="font-size:14px; font-weight:bold;">館浜電鉄 運行指令</div>
+        <div id="stat" style="font-size:12px; color:#f00;">OFFLINE</div>
+    </div>
 
-    <button class="sos" onclick="toggleEmergency()">🚨 緊急停止・防護無線</button>
+    <button class="sos-btn" onclick="sendSOS()">🚨 緊急停止・防護無線 (SOS)</button>
 
-    <div class="sec">種別設定</div>
+    <div class="group-label">1. 種別設定</div>
     <div id="type-grid" class="grid"></div>
 
-    <div class="sec">行先・方面</div>
+    <div class="group-label">2. 行先・方面</div>
     <div class="grid" style="grid-template-columns: 1fr 1fr;">
         <button id="b-up" onclick="setBound('館浜')">館浜 方面</button>
         <button id="b-down" onclick="setBound('赤山町')">赤山町 方面</button>
     </div>
     <div id="dest-grid" class="grid" style="margin-top:5px;"></div>
 
-    <div class="sec">指令テロップ</div>
+    <div class="group-label">3. ドア・締切操作</div>
+    <div class="grid">
+        <button style="background:darkorange" onclick="sendDoor('open','left')">左開</button>
+        <button style="background:darkorange" onclick="sendDoor('open','right')">右開</button>
+        <button style="background:navy" onclick="sendDoor('close')">全閉</button>
+        <button id="cut-btn" onclick="toggleCut()">3/4締切</button>
+    </div>
+
+    <div class="group-label">4. 指令テロップ</div>
     <div class="grid">
         <button onclick="sendTicker('平常通り運転しております。')">平常</button>
-        <button onclick="sendTicker('【緊急】ただいま地震が発生しました。急停車します。')">地震速報</button>
-        <button onclick="sendTicker('【運行情報】浜園駅にて自営R線からの接続待ちを行います。')">R線接続</button>
-        <button onclick="sendTicker('【注意】足元が滑りやすくなっています。ご注意ください。')">雨天</button>
+        <button onclick="sendTicker('【運行情報】強風の影響により、一部列車に遅れが出ています。')">強風</button>
+        <button onclick="sendTicker('【緊急】地震が発生しました。急停車します。')">地震</button>
+        <button onclick="sendTicker('【案内】浜園にて自営R線へお乗り換えいただけます。')">R線案内</button>
     </div>
 
-    <div class="sec">ドア操作</div>
-    <div class="grid">
-        <button style="background:orange" onclick="sendDoor('open','left')">左開</button>
-        <button style="background:orange" onclick="sendDoor('open','right')">右開</button>
-        <button style="background:blue" onclick="sendDoor('close')">全閉</button>
-        <button onclick="toggleCut()">3/4締切</button>
-    </div>
-
-    <div class="sec">駅名対照表 (現在駅選択)</div>
+    <div class="group-label">5. 現在駅（停車駅データ連動）</div>
     <div id="st-list"></div>
 
-    <div id="mic-wrap"><button id="mic-btn">マイク放送 (長押し)</button></div>
+    <div id="mic-panel"><button id="mic-btn">🎤 放送開始 (長押し)</button></div>
 
     <script>
+        const TARGET_ID = "tannihama-master-node";
         const config = {
-            types: ["普通", "準急", "急行", "特急", "回送", "試運転"],
-            sts: ["赤山町", "西赤山", "奥峯口", "日野森", "高見沢", "水越", "藤江", "大道寺", "新野崎", "浜園", "駒野", "館浜"]
+            types: ["普通", "準急", "急行", "快急", "特急", "試運転", "回送"],
+            // 画像のスプレッドシートから忠実に再現
+            stations: [
+                { name: "赤山町", stop: [1,1,1,1,1,1,1] }, { name: "西赤山", stop: [1,1,1,0,0,1,1] },
+                { name: "奥峯口", stop: [1,1,1,0,0,1,1] }, { name: "日野森", stop: [1,1,1,1,0,1,1] },
+                { name: "高見沢", stop: [1,1,1,0,0,1,1] }, { name: "水越",   stop: [1,1,1,1,0,1,1] },
+                { name: "藤江",   stop: [1,1,1,1,0,1,1] }, { name: "大道寺", stop: [1,1,1,1,1,1,1] },
+                { name: "江ノ原", stop: [1,1,1,0,0,1,1] }, { name: "新野崎", stop: [1,1,1,1,0,1,1] },
+                { name: "新井川", stop: [1,0,0,0,0,1,1] }, { name: "羽衣橋", stop: [1,0,0,0,0,1,1] },
+                { name: "浜園",   stop: [1,1,0,0,0,1,1] }, { name: "津崎",   stop: [1,0,0,0,0,1,1] },
+                { name: "虹ケ浜", stop: [1,0,0,0,0,1,1] }, { name: "海岸公園", stop: [1,0,0,0,0,1,1] },
+                { name: "河原崎", stop: [1,0,0,0,0,1,1] }, { name: "駒野",   stop: [1,1,0,0,0,1,1] },
+                { name: "館浜",   stop: [1,1,1,1,1,1,1] }
+            ]
         };
-        let conn, peer, localStream, sType="普通", sDest="館浜", sBound="館浜", isE=false, isC=false;
+
+        let conn, peer, localStream, sType="普通", sDest="館浜", sBound="館浜", isSos=false, isCut=false;
 
         function init() {
+            peer = new Peer();
+            peer.on('open', () => {
+                conn = peer.connect(TARGET_ID);
+                conn.on('open', () => { document.getElementById('stat').innerText="CONNECTED"; document.getElementById('stat').style.color="#0f0"; render(); });
+            });
+
             config.types.forEach(t => {
                 const b = document.createElement('button'); b.innerText = t;
                 b.onclick = () => { sType = t; render(); }; document.getElementById('type-grid').appendChild(b);
             });
-            config.sts.forEach(s => {
-                const b = document.createElement('button'); b.innerText = s;
-                b.onclick = () => { sDest = s; render(); }; document.getElementById('dest-grid').appendChild(b);
+            config.stations.forEach(s => {
+                const b = document.createElement('button'); b.innerText = s.name;
+                b.onclick = () => { sDest = s.name; render(); }; document.getElementById('dest-grid').appendChild(b);
             });
+
             const mb = document.getElementById('mic-btn');
             mb.onmousedown = micOn; mb.onmouseup = micOff;
             mb.addEventListener('touchstart', (e)=>{e.preventDefault(); micOn();});
             mb.addEventListener('touchend', micOff);
-            connect();
-        }
-
-        function connect() {
-            const id = new URLSearchParams(window.location.search).get('id');
-            peer = new Peer();
-            peer.on('open', () => {
-                conn = peer.connect(id);
-                conn.on('open', () => { document.getElementById('stat').innerText="CONNECTED"; render(); });
-            });
         }
 
         function render() {
-            document.querySelectorAll('#type-grid button').forEach(b=>b.className=(b.innerText===sType?'active':''));
-            document.querySelectorAll('#dest-grid button').forEach(b=>b.className=(b.innerText===sDest?'active':''));
+            document.querySelectorAll('#type-grid button').forEach(b => b.className = (b.innerText===sType?'active':''));
+            document.querySelectorAll('#dest-grid button').forEach(b => b.className = (b.innerText===sDest?'active':''));
             document.getElementById('b-up').className = (sBound==='館浜'?'active':'');
             document.getElementById('b-down').className = (sBound==='赤山町'?'active':'');
 
             const list = document.getElementById('st-list'); list.innerHTML = '';
-            let order = (sBound==='赤山町') ? [...config.sts].reverse() : [...config.sts];
-            order.forEach((s, i) => {
-                const row = document.createElement('div'); row.className = "st-row";
-                row.innerHTML = `<div class="st-num">${String(i+1).padStart(2,'0')}</div>`;
-                const b = document.createElement('button'); b.className="st-btn"; b.innerText = s;
-                b.onclick = () => {
-                    let next = order[i+1] || "終点";
-                    if(s === sDest) next = "終点";
-                    conn.send({type:'update', now:s, next:next, trainType:sType, dest:sDest, bound:sBound});
-                };
-                row.appendChild(b); list.appendChild(row);
+            const tIdx = config.types.indexOf(sType);
+            let order = (sBound==='赤山町') ? [...config.stations].reverse() : [...config.stations];
+
+            order.forEach((st, i) => {
+                if(st.stop[tIdx] === 1) {
+                    const row = document.createElement('div'); row.className = "st-row";
+                    const b = document.createElement('button'); b.className = "st-btn"; b.innerText = st.name;
+                    b.onclick = () => {
+                        let next = "---";
+                        for(let j=i+1; j<order.length; j++) { if(order[j].stop[tIdx] === 1) { next = order[j].name; break; } }
+                        if(st.name === sDest) next = "終点";
+                        conn.send({type:'update', now:st.name, next:next, trainType:sType, dest:sDest, bound:sBound});
+                    };
+                    row.appendChild(b); list.appendChild(row);
+                }
             });
         }
 
         function sendDoor(s, side){ conn.send({type:'door', status:s, side:side}); }
         function sendTicker(t){ conn.send({type:'ticker', text:t}); }
-        function toggleEmergency(){ isE=!isE; conn.send({type:'emergency', active:isE}); }
-        function toggleCut(){ isC=!isC; conn.send({type:'cut', active:isC}); }
+        function sendSOS(){ isSos=!isSos; conn.send({type:'sos', active:isSos}); }
+        function toggleCut(){ isCut=!isCut; document.getElementById('cut-btn').className=isCut?'active':''; conn.send({type:'cut', active:isCut}); }
         function setBound(b){ sBound=b; render(); }
-        async function micOn(){ localStream = await navigator.mediaDevices.getUserMedia({audio:true}); peer.call(new URLSearchParams(window.location.search).get('id'), localStream); }
-        function micOff(){ if(localStream) localStream.getTracks().forEach(t=>t.stop()); }
+        async function micOn(){ try{localStream = await navigator.mediaDevices.getUserMedia({audio:true}); peer.call(TARGET_ID, localStream); document.getElementById('mic-btn').style.background="#ff9500"; document.getElementById('mic-btn').innerText="🎤 放送中...";}catch(e){} }
+        function micOff(){ if(localStream) localStream.getTracks().forEach(t=>t.stop()); document.getElementById('mic-btn').style.background="#f33"; document.getElementById('mic-btn').innerText="🎤 放送開始 (長押し)"; }
     </script>
 </body>
 </html>
