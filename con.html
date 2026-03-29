@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 統合コンソール V6</title>
+    <title>館浜電鉄 コンソール V6.1</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 240px; user-select: none; }
-        .label { font-size: 11px; color: #aaa; margin: 15px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; text-transform: uppercase; }
+        .label { font-size: 11px; color: #aaa; margin: 15px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; }
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
         .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
         button { background: #333; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; }
@@ -28,7 +28,7 @@
     <div class="label">1. 種別設定</div>
     <div id="type-grid" class="grid"></div>
 
-    <div class="label">2. 運行情報 (全10パターン)</div>
+    <div class="label">2. 運行情報テロップ</div>
     <div class="grid">
         <button class="ticker-btn" onclick="sendTicker('平常通り運転しています。')">平常</button>
         <button class="ticker-btn" onclick="sendTicker('強風のため、一部区間で速度を落として運転しています。')">強風</button>
@@ -36,9 +36,9 @@
         <button class="ticker-btn" onclick="sendTicker('車両点検を行っているため、停車しております。')" style="color:#e74c3c">車両点検</button>
         <button class="ticker-btn" onclick="sendTicker('踏切内の安全確認を行っています。発車までお待ちください。')">踏切確認</button>
         <button class="ticker-btn" onclick="sendTicker('前の列車との間隔調整のため、しばらく停車いたします。')">間隔調整</button>
-        <button class="ticker-btn" onclick="sendTicker('本日、館浜花火大会開催のため、臨時ダイヤで運行しています。')">花火臨時</button>
+        <button class="ticker-btn" onclick="sendTicker('本日、沿線イベント開催のため、臨時ダイヤで運行しています。')">臨時ダイヤ</button>
         <button class="ticker-btn" onclick="sendTicker('急病人救護のため、この駅でしばらく停車いたします。')">急病人</button>
-        <button class="ticker-btn" onclick="sendTicker('線路内に立ち入りがあったため、安全確認を行っています。')">線路立ち入り</button>
+        <button class="ticker-btn" onclick="sendTicker('線路内に立ち入りがあったため、安全確認を行っています。')">安全確認</button>
         <button class="ticker-btn" onclick="sendTicker('接続待ちのため、発車が数分遅れる見込みです。')">接続待ち</button>
     </div>
 
@@ -76,18 +76,18 @@
                 { name: "高見沢", stop: [1,1,1,0,0], trans: "" },
                 { name: "水越",   stop: [1,1,1,1,0], trans: "" },
                 { name: "藤江",   stop: [1,1,1,1,0], trans: "" },
-                { name: "大道寺", stop: [1,1,1,1,1], trans: "JR線・モノレール" },
+                { name: "大道寺", stop: [1,1,1,1,1], trans: "" },
                 { name: "江ノ原", stop: [1,1,1,0,0], trans: "" },
                 { name: "新野崎", stop: [1,1,1,1,0], trans: "" },
                 { name: "新井川", stop: [1,0,0,0,0], trans: "" },
                 { name: "羽衣橋", stop: [1,0,0,0,0], trans: "" },
-                { name: "浜園",   stop: [1,1,0,0,0], trans: "" },
+                { name: "浜園",   stop: [1,1,0,0,0], trans: "自営R線" },
                 { name: "津崎",   stop: [1,0,0,0,0], trans: "" },
                 { name: "虹ケ浜", stop: [1,0,0,0,0], trans: "" },
                 { name: "海岸公園", stop: [1,0,0,0,0], trans: "" },
                 { name: "河原崎", stop: [1,0,0,0,0], trans: "" },
-                { name: "駒野",   stop: [1,1,0,0,0], trans: "バス乗り換え" },
-                { name: "館浜",   stop: [1,1,1,1,1], trans: "海岸線・フェリー" }
+                { name: "駒野",   stop: [1,1,0,0,0], trans: "" },
+                { name: "館浜",   stop: [1,1,1,1,1], trans: "自営R線" }
             ]
         };
 
@@ -129,7 +129,7 @@
 
             const list = document.getElementById('station-list'); list.innerHTML = '';
             const tIdx = config.types.indexOf(selType);
-            if(tIdx > 4) { // 回送・試運転
+            if(tIdx > 4) { // 回送・試運転用
                  const b = document.createElement('button'); b.className = "st-btn"; b.innerText = "運行開始（表示更新）";
                  b.onclick = () => conn.send({ type:'update', now:'---', next:'---', trainType:selType, dest:selDest, bound:selBound });
                  list.appendChild(b); return;
