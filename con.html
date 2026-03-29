@@ -3,46 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 操作盤</title>
+    <title>操作盤</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: white; margin: 0; padding: 10px; padding-bottom: 120px; }
-        .card { background: #222; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        button { background: #333; border: none; color: white; padding: 15px 5px; border-radius: 5px; font-weight: bold; }
+        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 100px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        button { background: #333; border: none; color: #fff; padding: 15px 5px; border-radius: 8px; font-weight: bold; }
         button.active { background: #ffcc00; color: #000; }
-        
-        /* 駅ボタン */
-        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 8px; background: #2c2c2e; border-left: 10px solid #444; font-size: 16px; border-radius: 5px; }
+        .st-btn { width: 100%; text-align: left; padding: 20px; margin-bottom: 10px; background: #222; border-left: 10px solid #444; border-radius: 5px; font-size: 18px; }
         .stop { border-left-color: #2ecc71; opacity: 1; }
         .pass { border-left-color: #555; opacity: 0.2; pointer-events: none; }
-        
-        #mic-btn { position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; background: #ff3b30; color: white; font-size: 20px; border-radius: 0; border: none; font-weight: bold; }
-        #status { text-align: center; font-size: 12px; margin-bottom: 10px; }
+        #mic-btn { position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; }
     </style>
 </head>
 <body onload="connect()">
-    <div id="status">接続中...</div>
-
-    <div class="card">
-        <div class="grid">
-            <button class="t-btn active" onclick="setType(this, '普通')">普通</button>
-            <button class="t-btn" onclick="setType(this, '準急')">準急</button>
-            <button class="t-btn" onclick="setType(this, '急行')">急行</button>
-            <button class="t-btn" onclick="setType(this, '快急')">快急</button>
-            <button class="t-btn" onclick="setType(this, '特急')">特急</button>
-            <button onclick="sendData('dest', '館浜')">館浜行</button>
-        </div>
+    <div id="status" style="text-align:center; padding:10px;">接続準備中...</div>
+    <div class="grid">
+        <button class="t-btn active" onclick="setType(this, '普通')">普通</button>
+        <button class="t-btn" onclick="setType(this, '準急')">準急</button>
+        <button class="t-btn" onclick="setType(this, '急行')">急行</button>
+        <button class="t-btn" onclick="setType(this, '快急')">快急</button>
+        <button class="t-btn" onclick="setType(this, '特急')">特急</button>
     </div>
-
-    <div id="station-list"></div>
-
-    <button id="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送ボタン (長押し)</button>
+    <div id="list"></div>
+    <button id="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送ボタン</button>
 
     <script>
         let conn, peer, call;
         let currentType = "普通";
-        
         const stationData = [
             { name: "赤山町", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} },
             { name: "西赤山", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
@@ -60,18 +48,18 @@
             { name: "津崎",   stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
             { name: "虹ケ浜", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
             { name: "海岸公園", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "河原崎", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特aqu":0} },
+            { name: "河原崎", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
             { name: "駒野",   stop: {"普通":1,"準急":1,"急行":0,"快急":0,"特急":0} },
             { name: "館浜",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} }
         ];
 
         function connect() {
-            const targetID = new URLSearchParams(window.location.search).get('id') || "TATEHAMA-PC-MAIN";
+            const targetID = new URLSearchParams(window.location.search).get('id');
             peer = new Peer();
             peer.on('open', () => {
-                conn = peer.connect(targetID);
-                conn.on('open', () => {
-                    document.getElementById('status').innerText = "● PCに接続成功";
+                conn = peer.connect(targetID, { reliable: true }); // 接続を高速化
+                conn.on('open', () => { 
+                    document.getElementById('status').innerText = "● 接続成功";
                     document.getElementById('status').style.color = "#2ecc71";
                 });
             });
@@ -87,33 +75,27 @@
         }
 
         function render() {
-            const list = document.getElementById('station-list');
-            list.innerHTML = '';
+            const list = document.getElementById('list'); list.innerHTML = '';
             stationData.forEach((st, i) => {
                 const isStop = st.stop[currentType] === 1;
-                const b = document.createElement('button');
+                const b = document.createElement('div');
                 b.className = `st-btn ${isStop ? 'stop' : 'pass'}`;
                 b.innerText = st.name;
-                if(isStop) {
-                    b.onclick = () => {
-                        const nextSt = stationData[i+1] ? stationData[i+1].name : "終点";
-                        if(conn) conn.send({type: 'station', now: st.name, next: nextSt});
-                    };
-                }
+                if(isStop) b.onclick = () => {
+                    const next = stationData[i+1] ? stationData[i+1].name : "終点";
+                    if(conn) conn.send({type: 'station', now: st.name, next: next});
+                };
                 list.appendChild(b);
             });
         }
 
-        function sendData(type, val) { if(conn) conn.send({type, val}); }
-
         async function micOn() {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const targetID = new URLSearchParams(window.location.search).get('id') || "TATEHAMA-PC-MAIN";
+            const targetID = new URLSearchParams(window.location.search).get('id');
             call = peer.call(targetID, stream);
             document.getElementById('mic-btn').style.background = "#fff";
-            document.getElementById('mic-btn').style.color = "#000";
         }
-        function micOff() { if(call) call.close(); document.getElementById('mic-btn').style.background = "#ff3b30"; document.getElementById('mic-btn').style.color = "#fff"; }
+        function micOff() { if(call) call.close(); document.getElementById('mic-btn').style.background = "#ff3b30"; }
     </script>
 </body>
 </html>
