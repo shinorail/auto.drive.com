@@ -3,27 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 操作盤</title>
+    <title>館浜電鉄 操作盤 (自動放送対応)</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --text: #fff; --accent: #ffcc00; --danger: #ff3b30; --success: #28a745; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 160px; user-select: none; }
+        :root { --bg: #000; --panel: #1c1c1e; --text: #fff; --accent: #ffcc00; --danger: #ff3b30; --success: #28a745; --gray: #666;}
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 220px; user-select: none; }
         header { position: sticky; top: 0; background: #000; padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
         #conn-tag { font-size: 10px; padding: 4px 10px; border-radius: 20px; background: var(--danger); }
         #conn-tag.on { background: var(--success); }
-        .type-nav { display: grid; grid-template-columns: repeat(5, 1fr); }
-        .t-btn { border: none; padding: 15px 0; font-size: 10px; font-weight: bold; color: #fff; opacity: 0.3; }
-        .t-btn.active { opacity: 1; border-bottom: 4px solid #fff; }
-        .t-local { background: #666; } .t-semi { background: #007aff; } .t-express { background: #ff9500; } .t-rapid { background: #af52de; } .t-limited { background: #ff3b30; }
+        
+        /* 種別選択 (追加) */
+        .type-nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; }
+        .t-btn { border: 2px solid #555; padding: 12px 0; font-size: 10px; font-weight: bold; color: #fff; background: #222; border-radius: 5px;}
+        .t-btn.active { opacity: 1; border-color: #fff; background-color: rgba(255,255,255,0.2); }
+        
+        /* 駅リスト */
+        .st-list-area { border-top: 1px solid #333; }
         .row { display: flex; align-items: center; min-height: 65px; margin: 5px; background: var(--panel); border-radius: 8px; border-left: 10px solid #444; }
         .row.stop { border-left-color: var(--accent); }
         .row.done { opacity: 0.2; transform: scale(0.96); }
         .st-name { font-size: 20px; font-weight: bold; margin-left: 15px; }
-        .tools { position: fixed; bottom: 0; width: 100%; background: #111; padding: 10px 0; border-top: 1px solid #333; }
+        
+        /* 操作ツール (強化) */
+        .tools { position: fixed; bottom: 0; width: 100%; background: #111; padding: 10px 0; border-top: 1px solid #333; z-index: 1000;}
         .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 0 10px 10px; }
-        .tool-btn { background: #333; border: none; color: #fff; padding: 10px 0; border-radius: 5px; font-size: 10px; }
-        .mic-btn { width: 70px; height: 70px; border-radius: 50%; background: #222; border: 4px solid #444; color: #fff; font-weight: bold; margin: 0 auto; display: block; }
+        .tool-btn { background: #333; border: none; color: #fff; padding: 12px 0; border-radius: 5px; font-size: 10px; }
+        
+        /* マイク放送 */
+        .mic-btn-container { display: flex; justify-content: space-around; align-items: center; width: 100%; margin-top: 5px;}
+        .mic-btn { width: 70px; height: 70px; border-radius: 50%; background: #222; border: 4px solid #444; color: #fff; font-weight: bold; }
         .mic-btn.active { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
+
+        /* 自動音声放送 (追加) */
+        .auto-btn { width: 70px; height: 70px; border-radius: 10px; background: #333; border: 2px solid #555; color: var(--text); font-size: 10px; font-weight: bold; }
+        .auto-btn.playing { background: var(--success); }
+
     </style>
 </head>
 <body onload="init()">
@@ -31,83 +45,115 @@
         <div id="clock">00:00:00</div>
         <div id="conn-tag">接続中...</div>
     </header>
-    <nav class="type-nav" id="type-nav"></nav>
-    <div id="st-list"></div>
-    <div class="tools">
-        <div class="tool-grid">
-            <button class="tool-btn" onclick="sendCmd('⚠️ ドアが閉まります')">ドア閉</button>
-            <button class="tool-btn" onclick="sendCmd('🎵 発車メロディ')">発メロ</button>
-            <button class="tool-btn" onclick="location.reload()">再読込</button>
-            <button class="tool-btn" style="background:var(--danger)" ontouchstart="playBz()" ontouchend="stopBz()">非常</button>
-        </div>
-        <button id="mic-btn" class="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送</button>
+    
+    <div class="type-nav" id="type-nav">
+        <button class="t-btn active" onclick="setTrainType(this, '普通')">普通</button>
+        <button class="t-btn" onclick="setTrainType(this, '準急')">準急</button>
+        <button class="t-btn" onclick="setTrainType(this, '急行')">急行</button>
+        <button class="t-btn" onclick="setTrainType(this, '快急')">快急</button>
+        <button class="t-btn" onclick="setTrainType(this, '特急')">特急</button>
     </div>
 
-    <script>
-        const stations = [
-            { n: "赤山町", s: [1,1,1,1,1] }, { n: "西赤山", s: [1,1,1,0,0] }, { n: "奥峯口", s: [1,1,1,0,0] },
-            { n: "日野森", s: [1,1,1,1,0] }, { n: "高見沢", s: [1,1,1,0,0] }, { n: "水越", s: [1,1,1,1,0] },
-            { n: "藤江", s: [1,1,1,1,0] }, { n: "大道寺", s: [1,1,1,1,1] }, { n: "江ノ原", s: [1,1,1,0,0] },
-            { n: "新野崎", s: [1,1,1,1,0] }, { n: "新井川", s: [1,0,0,0,0] }, { n: "羽衣橋", s: [1,0,0,0,0] },
-            { n: "浜園", s: [1,1,0,0,0] }, { n: "津崎", s: [1,0,0,0,0] }, { n: "虹ケ浜", s: [1,0,0,0,0] },
-            { n: "海岸公園", s: [1,0,0,0,0] }, { n: "河原崎", s: [1,0,0,0,0] }, { n: "駒野", s: [1,1,0,0,0] },
-            { n: "館浜", s: [1,1,1,1,1] }
-        ];
-        const types = [{n:'普通',id:'local'},{n:'準急',id:'semi'},{n:'急行',id:'express'},{n:'快急',id:'rapid'},{n:'特急',id:'limited'}];
-        let peer, conn, call, curType = 0;
+    <div class="st-list-area" id="st-list"></div>
+    
+    <div class="tools">
+        <div class="tool-grid">
+            <button class="tool-btn" onclick="sendCmd('️ドアが閉まります')">ドア閉</button>
+            <button class="tool-btn" onclick="sendCmd('発車メロディ')">発メロ</button>
+            <button class="tool-btn" onclick="location.reload()">再読込</button>
+            <button class="tool-btn" style="background:var(--danger)">非常</button>
+        </div>
 
+        <div class="mic-btn-container">
+            <button id="mic-btn" class="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送</button>
+            <button id="auto-btn" class="auto-btn" onclick="playAutoVoice()">🔊 自動放送</button>
+        </div>
+    </div>
+
+    <audio id="auto-voice-src" src="https://example.com/sound/sample_tts.mp3"></audio> <script>
+        // 停車駅リスト
+        const stations = [
+            "館浜", "駒野", "河原崎", "海岸公園", "虹ケ浜", "津崎", "浜園", "羽衣橋", "新井川"
+        ];
+        let peer, conn, call;
+
+        // システム: 初期化
         function init() {
             setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('ja-JP',{hour12:false}); }, 1000);
-            renderNav(); renderList();
-            const targetID = new URLSearchParams(window.location.search).get('id');
+            renderList();
+            
+            // PC側のIDとペアリング
+            const targetID = new URLSearchParams(window.location.search).get('id') || "TATEHAMA-TRAIN-SYSTEM-2026";
             peer = new Peer();
+            
             peer.on('open', () => {
-                if(targetID) {
-                    conn = peer.connect(targetID);
-                    conn.on('open', () => {
-                        document.getElementById('conn-tag').innerText = "接続済";
-                        document.getElementById('conn-tag').classList.add('on');
-                    });
-                }
+                conn = peer.connect(targetID);
+                conn.on('open', () => {
+                    document.getElementById('conn-tag').innerText = "接続済";
+                    document.getElementById('conn-tag').classList.add('on');
+                });
             });
         }
 
-        function renderNav() {
-            const nav = document.getElementById('type-nav');
-            types.forEach((t, i) => {
-                const b = document.createElement('button');
-                b.className = `t-btn t-${t.id} ${i===0?'active':''}`;
-                b.innerText = t.n;
-                b.onclick = () => { curType = i; document.querySelectorAll('.t-btn').forEach(btn => btn.classList.remove('active')); b.classList.add('active'); renderList(); };
-                nav.appendChild(b);
-            });
-        }
-
+        // UI: 駅リスト描画
         function renderList() {
             const list = document.getElementById('st-list');
             list.innerHTML = '';
             stations.forEach(st => {
-                const isStop = st.s[curType];
                 const div = document.createElement('div');
-                div.className = `row ${isStop ? 'stop' : ''}`;
-                div.innerHTML = `<div style="width:40px;text-align:center;font-size:10px;">${isStop?'停車':''}</div><div class="st-name">${st.n}</div>`;
-                div.onclick = () => { if(!div.classList.toggle('done') && conn) conn.send({type:'station', val:st.n}); };
+                div.className = `row stop`; // 全駅停車前提
+                div.innerHTML = `<div style="width:40px;text-align:center;font-size:10px;">停車</div><div class="st-name">${st}</div>`;
+                // タップで駅名をPCへ送信
+                div.onclick = () => { if(!div.classList.toggle('done') && conn) conn.send({type:'station', val:st}); };
                 list.appendChild(div);
             });
         }
 
+        // UI: 種別選択 (新機能)
+        function setTrainType(btn, typeName) {
+            // アクティブ表示の切り替え
+            document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // PCへ送信
+            if(conn && conn.open) conn.send({type:'type', val:typeName});
+        }
+
+        // システム: マイク放送 (以前のコードのまま)
         async function micOn() {
-            document.getElementById('mic-btn').classList.add('active');
-            const targetID = new URLSearchParams(window.location.search).get('id');
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            call = peer.call(targetID, stream);
+            const btn = document.getElementById('mic-btn');
+            const targetID = new URLSearchParams(window.location.search).get('id') || "TATEHAMA-TRAIN-SYSTEM-2026";
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                btn.classList.add('active');
+                call = peer.call(targetID, stream);
+            } catch (err) { alert("マイクエラー: " + err.name); }
         }
         function micOff() { document.getElementById('mic-btn').classList.remove('active'); if(call) call.close(); }
-        function sendCmd(v) { if(conn) conn.send({type:'cmd', val:v}); }
 
-        let ac = new AudioContext(), osc;
-        function playBz() { osc=ac.createOscillator(); osc.type='square'; osc.connect(ac.destination); osc.start(); }
-        function stopBz() { if(osc) osc.stop(); }
+        // システム: 自動音声放送 (新機能)
+        function playAutoVoice() {
+            const audio = document.getElementById('auto-voice-src');
+            const btn = document.getElementById('auto-btn');
+            
+            if(audio.paused) {
+                // 再生開始
+                audio.play().then(() => {
+                    btn.innerText = "再生中...";
+                    btn.classList.add('playing');
+                }).catch(e => alert("自動放送の音源ファイルがありません。\nコードのsrc属性を編集してください。"));
+            } else {
+                // 再生停止
+                audio.pause();
+                audio.currentTime = 0;
+            }
+
+            // 再生終了時の処理
+            audio.onended = () => {
+                btn.innerText = "自動放送";
+                btn.classList.remove('playing');
+            }
+        }
     </script>
 </body>
 </html>
