@@ -2,100 +2,55 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 操作盤</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>操作盤 (スマホ用)</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #111; color: white; margin: 0; padding: 15px; }
-        .section { background: #222; border-radius: 10px; padding: 10px; margin-bottom: 15px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        button { background: #333; border: none; color: white; padding: 15px 5px; border-radius: 5px; font-weight: bold; font-size: 13px; }
-        button.active { background: #ffcc00; color: #000; }
-        
-        .st-btn { width: 100%; text-align: left; padding: 15px; margin-bottom: 5px; background: #2c2c2e; border-left: 8px solid #444; display: flex; justify-content: space-between; }
-        /* 停車駅のスタイル */
-        .stop { border-left-color: #2ecc71; opacity: 1; }
-        /* 通過駅のスタイル（無効化） */
-        .pass { border-left-color: #555; opacity: 0.2; pointer-events: none; }
-        
-        #status { text-align: center; font-size: 12px; margin-bottom: 10px; color: #e74c3c; }
+        .st-btn { width: 100%; text-align: left; padding: 20px; margin-bottom: 10px; background: #333; color: white; border: none; border-left: 10px solid #2ecc71; font-size: 18px; font-weight: bold; border-radius: 5px; }
+        .st-btn:active { background: #444; }
+        #status { text-align: center; padding: 10px; font-weight: bold; margin-bottom: 10px; }
+        .online { color: #2ecc71; }
+        .offline { color: #e74c3c; }
     </style>
 </head>
 <body onload="connect()">
-    <div id="status">未接続</div>
-
-    <div class="section">
-        <div class="grid">
-            <button class="t-btn active" onclick="setType(this, '普通')">普通</button>
-            <button class="t-btn" onclick="setType(this, '準急')">準急</button>
-            <button class="t-btn" onclick="setType(this, '急行')">急行</button>
-            <button class="t-btn" onclick="setType(this, '快急')">快急</button>
-            <button class="t-btn" onclick="setType(this, '特急')">特急</button>
-        </div>
-    </div>
-
+    <div id="status" class="offline">接続試行中...</div>
     <div id="station-list"></div>
 
     <script>
         let conn;
-        let currentType = "普通";
-        
-        // 停車駅データ (1:停車, 0:通過)
-        const stationData = [
-            { name: "赤山町", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} },
-            { name: "西赤山", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
-            { name: "奥峯口", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
-            { name: "日野森", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
-            { name: "高見沢", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
-            { name: "水越",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
-            { name: "藤江",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
-            { name: "大道寺", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} },
-            { name: "江ノ原", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
-            { name: "新野崎", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
-            { name: "新井川", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "羽衣橋", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "浜園",   stop: {"普通":1,"準急":1,"急行":0,"快急":0,"特急":0} },
-            { name: "津崎",   stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "虹ケ浜", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "海岸公園", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "河原崎", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "駒野",   stop: {"普通":1,"準急":1,"急行":0,"快急":0,"特急":0} },
-            { name: "館浜",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} }
-        ];
+        // 送っていただいた駅名リスト
+        const stations = ["赤山町", "西赤山", "奥峯口", "日野森", "高見沢", "水越", "藤江", "大道寺", "江ノ原", "新野崎", "新井川", "羽衣橋", "浜園", "津崎", "虹ケ浜", "海岸公園", "河原崎", "駒野", "館浜"];
 
         function connect() {
-            const id = new URLSearchParams(window.location.search).get('id') || "TATEHAMA-MAIN-SYSTEM";
+            const params = new URLSearchParams(window.location.search);
+            const targetID = params.get('id'); // QRから渡されたIDを取得
+
+            if (!targetID) {
+                document.getElementById('status').innerText = "エラー: IDが見つかりません";
+                return;
+            }
+
             const peer = new Peer();
             peer.on('open', () => {
-                conn = peer.connect(id);
+                conn = peer.connect(targetID);
                 conn.on('open', () => {
-                    document.getElementById('status').innerText = "● 接続中";
-                    document.getElementById('status').style.color = "#2ecc71";
+                    document.getElementById('status').innerText = "● PCに接続しました";
+                    document.getElementById('status').className = "online";
                 });
             });
-            renderStations();
-        }
 
-        function setType(btn, type) {
-            currentType = type;
-            document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            if(conn) conn.send({type: 'type', val: type});
-            renderStations();
-        }
-
-        function renderStations() {
+            // ボタン作成
             const list = document.getElementById('station-list');
-            list.innerHTML = '';
-            stationData.forEach(st => {
-                const isStop = st.stop[currentType] === 1;
-                const b = document.createElement('button');
-                b.className = `st-btn ${isStop ? 'stop' : 'pass'}`;
-                b.innerHTML = `<span>${st.name}</span> <small>${isStop ? '停車' : '通過'}</small>`;
-                if(isStop) {
-                    b.onclick = () => { if(conn) conn.send({type: 'next', val: st.name}); };
-                }
-                list.appendChild(b);
+            stations.forEach(name => {
+                const btn = document.createElement('button');
+                btn.className = 'st-btn';
+                btn.innerText = name;
+                btn.onclick = () => {
+                    if (conn && conn.open) conn.send({ type: 'next', val: name });
+                };
+                list.appendChild(btn);
             });
         }
     </script>
