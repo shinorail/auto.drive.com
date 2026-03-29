@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>館浜電鉄 総合表示システム 極 V12</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>館浜電鉄 総合表示システム 極 V13</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --th-green: #2ecc71; --th-red: #ff3b30; --th-orange: #e67e22; --th-blue: #2980b9; --th-light: #f2f2f2; }
-        body { background: #000; margin: 0; color: #fff; font-family: "Helvetica Neue", Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        body { background: #000; margin: 0; color: #fff; font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         #scaler { width: 1280px; height: 850px; display: flex; flex-direction: column; gap: 15px; transform-origin: center; }
         
+        /* 外部幕 */
         .external-maku { background: #000; border: 8px solid #444; border-radius: 12px; height: 160px; display: flex; align-items: center; padding: 0 30px; }
         .maku-box, .dest-box { height: 95px; overflow: hidden; border: 3px solid #fff; background: #000; position: relative; }
         .maku-box { min-width: 260px; margin-right: 25px; }
@@ -20,6 +22,7 @@
         .roll-anim { animation: maku-roll 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95); }
         @keyframes maku-roll { 0% { transform: translateY(-100%); } 50% { transform: translateY(100%); } 51% { transform: translateY(-100%); } 100% { transform: translateY(0); } }
 
+        /* 車内LCD */
         .internal-lcd { background: #fff; color: #000; flex-grow: 1; border: 6px solid #333; display: flex; overflow: hidden; position: relative; }
         .lcd-main { flex: 7; padding: 30px; display: flex; flex-direction: column; border-right: 6px solid #000; position: relative; }
         header { border-bottom: 6px solid #000; display: flex; align-items: center; padding-bottom: 15px; margin-bottom: 20px; }
@@ -28,23 +31,28 @@
         .lcd-now-st { font-size: 58px; font-weight: bold; flex-grow: 1; text-align: right; }
         .next-st { font-size: 160px; font-weight: bold; text-align: center; margin: 10px 0; letter-spacing: -6px; line-height: 1; }
 
+        /* 統合情報エリア */
         .info-display-area { margin-top: auto; padding: 20px; background: var(--th-light); border-radius: 20px; position: relative; overflow: hidden; height: 220px; border: 3px solid #ccc; text-align: center;}
         #combined-msg-box { height: 60px; position: relative; overflow: hidden; margin-bottom: 15px; }
         #status-text { font-size: 36px; font-weight: bold; width: 100%; position: absolute; line-height: 60px; top: 0; left: 0; }
         .ticker-mode { white-space: nowrap; width: auto !important; animation: scroll-text 12s linear infinite; }
         @keyframes scroll-text { from { transform: translateX(1100px); } to { transform: translateX(-100%); } }
 
+        /* ドアビジュアル */
         .door-visual { width: 420px; height: 130px; background: #333; margin: 0 auto; position: relative; border: 6px solid #333; overflow: hidden; }
         .door-leaf { width: 50%; height: 100%; background: linear-gradient(90deg, #bbb, #eee, #bbb); border: 1px solid #777; position: absolute; top: 0; transition: transform 0.8s ease-in-out; }
-        .door-l { left: 0; } .door-r { right: 0; }
+        .door-l { left: 0; border-right: 1px solid #666; }
+        .door-r { right: 0; border-left: 1px solid #666; }
         .door-open .door-l { transform: translateX(-96%); }
         .door-open .door-r { transform: translateX(96%); }
 
-        .lcd-ad { flex: 3; background: #000; overflow: hidden; position: relative; }
-        #ad-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s; }
-        #cut-badge { position: absolute; top: 10px; right: 10px; background: var(--th-red); color: white; padding: 10px; font-weight: bold; display: none; z-index: 10; border-radius: 5px; }
+        /* 広告エリア */
+        .lcd-ad { flex: 3; background: #222; overflow: hidden; position: relative; }
+        #ad-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 1s ease-in-out; opacity: 1; }
+        #cut-badge { position: absolute; top: 15px; right: 15px; background: var(--th-red); color: white; padding: 12px; font-size: 20px; font-weight: bold; display: none; z-index: 10; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
 
-        #emergency-overlay { position: absolute; inset: 0; background: rgba(255,0,0,0.9); z-index: 99; display: none; align-items: center; justify-content: center; }
+        /* オーバーレイ */
+        #emergency-overlay { position: absolute; inset: 0; background: rgba(255,0,0,0.95); z-index: 99; display: none; align-items: center; justify-content: center; }
         #qr-overlay { position: absolute; inset: 0; background: #fff; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -55,8 +63,8 @@
             <div class="dest-box"><div id="ext-dest" class="rolling-text">---</div></div>
         </div>
         <div class="internal-lcd">
-            <div id="qr-overlay"><div id="qrcode" onclick="startSys()"></div><p>タップして開始</p></div>
-            <div id="emergency-overlay"><h1 style="font-size:100px; color:white;">SOS 急停車</h1></div>
+            <div id="qr-overlay"><div id="qrcode" onclick="startSys()"></div><p style="color:#000; font-weight:bold; margin-top:15px;">タップして運行開始</p></div>
+            <div id="emergency-overlay"><h1 style="font-size:120px; color:white; font-weight:bold; animation: blink 0.5s infinite;">SOS 急停車</h1></div>
             <div class="lcd-main">
                 <header>
                     <div class="lcd-bound" id="in-bound">---方面</div>
@@ -74,7 +82,7 @@
             </div>
             <div class="lcd-ad">
                 <div id="cut-badge">3/4 締切</div>
-                <img id="ad-img" src="img/kakekomi.jpg">
+                <img id="ad-img" src="img/kakekomi.jpg" onerror="this.src='https://via.placeholder.com/400x800/222222/ffffff?text=TANNIHAMA+LINE'">
             </div>
         </div>
     </div>
@@ -84,17 +92,25 @@
         const peer = new Peer();
         let currentTicker = "館浜電鉄をご利用いただきありがとうございます。";
         let isDoorOpen = false;
-        const ads = ["img/kakekomi.jpg", "img/ad2.jpg", "img/ad3.jpg"]; 
+        
+        // 広告リストと切り替えロジック
+        const ads = ["img/kakekomi.jpg", "img/ad2.jpg", "img/ad3.jpg"];
         let adIdx = 0;
 
         function startSys() { 
             document.getElementById('qr-overlay').style.display='none'; 
-            document.getElementById('remote-audio').play();
+            document.getElementById('remote-audio').play().catch(()=>{});
+            
+            // 広告切り替えタイマー始動
             setInterval(() => {
                 const img = document.getElementById('ad-img');
                 img.style.opacity = 0;
-                setTimeout(() => { adIdx = (adIdx+1)%ads.length; img.src = ads[adIdx]; img.style.opacity = 1; }, 800);
-            }, 15000);
+                setTimeout(() => {
+                    adIdx = (adIdx + 1) % ads.length;
+                    img.src = ads[adIdx];
+                    img.style.opacity = 1;
+                }, 1000);
+            }, 12000); // 12秒ごとに切り替え
         }
 
         peer.on('open', (id) => {
@@ -146,7 +162,11 @@
         }
 
         peer.on('call', (call) => { call.answer(); call.on('stream', (s) => { document.getElementById('remote-audio').srcObject = s; }); });
-        function setScale() { document.getElementById('scaler').style.transform = `scale(${Math.min(window.innerWidth/1300, window.innerHeight/900)})`; }
+        
+        function setScale() { 
+            const s = Math.min(window.innerWidth/1300, window.innerHeight/900);
+            document.getElementById('scaler').style.transform = `scale(${s})`; 
+        }
         window.onresize = setScale; setScale();
     </script>
 </body>
