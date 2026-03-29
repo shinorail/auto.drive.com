@@ -3,51 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 統合コンソール V7</title>
+    <title>指令コンソール V8</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 240px; user-select: none; }
-        .label { font-size: 11px; color: #aaa; margin: 15px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; }
+        body { font-family: sans-serif; background: #1a1a1a; color: #fff; margin: 0; padding: 10px; padding-bottom: 240px; }
+        .label { font-size: 11px; color: #ffcc00; margin: 15px 0 6px; font-weight: bold; text-transform: uppercase; }
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
         .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
         button { background: #333; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; }
         button.active { background: #ffcc00; color: #000; }
-        .open-btn { background: #e67e22; height: 60px; font-size: 15px; }
-        .close-btn { background: #2980b9; height: 60px; font-size: 15px; }
-        .st-btn { width: 100%; text-align: left; padding: 16px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 17px; color: #fff; }
-        .ticker-btn { background: #444; font-size: 11px; height: 42px; border: 1px solid #555; }
-        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; z-index: 100; }
-        #mic-btn { width: 90%; height: 80px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; border-radius: 15px; touch-action: none; }
-        #v-meter { height: 8px; background: #000; width: 90%; margin: 0 auto 10px; border-radius: 4px; overflow: hidden; }
-        #v-bar { width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s; }
+        .open-btn { background: #e67e22; height: 50px; }
+        .close-btn { background: #2980b9; height: 50px; }
+        .st-btn { width: 100%; text-align: left; padding: 16px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 16px; color: #fff; }
+        .emergency-btn { background: #c0392b; height: 60px; font-size: 14px; grid-column: span 3; margin-top: 10px; }
+        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; }
+        #mic-btn { width: 90%; height: 80px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; border-radius: 15px; }
     </style>
 </head>
 <body onload="init()">
-    <div id="status" style="text-align:center; font-size:12px; padding:6px; background:#333;">接続中...</div>
+    <div id="status" style="text-align:center; font-size:12px; padding:6px; background:#333;">通信準備中...</div>
+
+    <div class="label">🚨 指令業務</div>
+    <div class="grid">
+        <button class="emergency-btn" id="sos-btn" onclick="toggleSOS()">防護無線発報（緊急停止）</button>
+        <button onclick="sendTicker('【運行指令】 1024列車、車両点検のため最寄りの駅で待機せよ。')">指令受領1</button>
+        <button onclick="sendTicker('【運行指令】 全列車、防護無線を受信したため緊急停止してください。')">指令受領2</button>
+        <button onclick="sendTicker('現在、指令所と連絡を試みています。しばらくお待ちください。')">連絡中</button>
+    </div>
 
     <div class="label">1. 種別</div>
     <div id="type-grid" class="grid"></div>
 
-    <div class="label">2. 運行情報 (10種)</div>
+    <div class="label">2. 運行テロップ</div>
     <div class="grid">
-        <button class="ticker-btn" onclick="sendTicker('平常通り運転しています。')">平常</button>
-        <button class="ticker-btn" onclick="sendTicker('強風のため、一部区間で速度を落として運転しています。')">強風</button>
-        <button class="ticker-btn" onclick="sendTicker('大雨の影響で、ダイヤに大幅な乱れが出ています。')" style="color:#3498db">大雨</button>
-        <button class="ticker-btn" onclick="sendTicker('車両点検を行っているため、停車しております。')" style="color:#e74c3c">車両点検</button>
-        <button class="ticker-btn" onclick="sendTicker('踏切内の安全確認を行っています。発車までお待ちください。')">踏切確認</button>
-        <button class="ticker-btn" onclick="sendTicker('前の列車との間隔調整のため、しばらく停車いたします。')">間隔調整</button>
-        <button class="ticker-btn" onclick="sendTicker('本日、沿線イベント開催のため、混雑が予想されます。')">イベント</button>
-        <button class="ticker-btn" onclick="sendTicker('急病人救護のため、この駅でしばらく停車いたします。')">急病人</button>
-        <button class="ticker-btn" onclick="sendTicker('線路内に立ち入りがあったため、安全確認を行っています。')">線路立入</button>
-        <button class="ticker-btn" onclick="sendTicker('接続待ちのため、発車が数分遅れる見込みです。')">接続待ち</button>
+        <button onclick="sendTicker('平常通り運転しています。')">平常</button>
+        <button onclick="sendTicker('車両点検を行っているため、停車しております。')" style="color:#e74c3c">点検中</button>
+        <button onclick="sendTicker('信号待ちのため、しばらく停車いたします。')">信号待ち</button>
+        <button onclick="sendTicker('踏切内の安全確認を行っています。')">踏切確認</button>
+        <button onclick="sendTicker('大雨の影響で、ダイヤに乱れが出ています。')">大雨</button>
+        <button onclick="sendTicker('接続待ちのため、発車までお待ちください。')">接続待ち</button>
     </div>
 
-    <div class="label">3. ドア</div>
-    <button id="cut-switch" style="width:100%; height:40px; margin-bottom:10px;" onclick="toggleCut()">3/4 締切：OFF</button>
-    <div class="grid" style="grid-template-columns: 1fr 1fr; gap:10px;">
+    <div class="label">3. ドア・設備</div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <button id="cut-switch" onclick="toggleCut()">3/4締切: OFF</button>
+        <button onclick="sendDoor('close')">■ ドア全閉</button>
         <button class="open-btn" onclick="sendDoor('open', 'left')">◀ 左ドア</button>
         <button class="open-btn" onclick="sendDoor('open', 'right')">右ドア ▶</button>
-        <button class="close-btn" style="grid-column: span 2" onclick="sendDoor('close')">■ ドア全閉</button>
     </div>
 
     <div class="label">4. 行先</div>
@@ -57,13 +59,10 @@
     </div>
     <div id="dest-grid" class="grid4"></div>
 
-    <div class="label">5. 現在駅（LCD連動）</div>
+    <div class="label">5. 現在駅（正確な停車駅データ）</div>
     <div id="station-list"></div>
 
-    <div id="mic-container">
-        <div id="v-meter"><div id="v-bar"></div></div>
-        <button id="mic-btn">🎤 放送中 (長押し)</button>
-    </div>
+    <div id="mic-container"><button id="mic-btn">🎤 指令・放送 (長押し)</button></div>
 
     <script>
         const config = {
@@ -91,23 +90,16 @@
             ]
         };
 
-        let conn, peer, localStream, audioContext, analyser, dataArray, animationId, isCut = false;
+        let conn, peer, localStream, isCut = false, isSos = false;
         let selType = "普通", selDest = "館浜", selBound = "館浜";
 
         function init() {
             const tg = document.getElementById('type-grid');
-            config.types.forEach(t => {
-                const b = document.createElement('button'); b.innerText = t;
-                b.onclick = () => { selType = t; updateUI(); }; tg.appendChild(b);
-            });
+            config.types.forEach(t => { const b = document.createElement('button'); b.innerText = t; b.onclick = () => { selType = t; updateUI(); }; tg.appendChild(b); });
             const dg = document.getElementById('dest-grid');
-            config.stations.forEach(st => {
-                const b = document.createElement('button'); b.innerText = st.name;
-                b.onclick = () => { selDest = st.name; updateUI(); }; dg.appendChild(b);
-            });
+            config.stations.forEach(st => { const b = document.createElement('button'); b.innerText = st.name; b.onclick = () => { selDest = st.name; updateUI(); }; dg.appendChild(b); });
             const mb = document.getElementById('mic-btn');
-            mb.onpointerdown = (e) => { e.preventDefault(); micOn(); };
-            mb.onpointerup = mb.onpointerleave = micOff;
+            mb.onpointerdown = (e) => { e.preventDefault(); micOn(); }; mb.onpointerup = mb.onpointerleave = micOff;
             connect();
         }
 
@@ -116,11 +108,7 @@
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id);
-                conn.on('open', () => { 
-                    document.getElementById('status').innerText = "ONLINE"; 
-                    document.getElementById('status').style.background = "#2ecc71"; 
-                    updateUI();
-                });
+                conn.on('open', () => { document.getElementById('status').innerText = "指令通信確立"; document.getElementById('status').style.background = "#2ecc71"; updateUI(); });
             });
         }
 
@@ -129,12 +117,12 @@
             document.getElementById('b-akayama').className = selBound === '赤山町' ? 'active' : '';
             document.querySelectorAll('#type-grid button').forEach(b => b.className = b.innerText === selType ? 'active' : '');
             document.querySelectorAll('#dest-grid button').forEach(b => b.className = b.innerText === selDest ? 'active' : '');
-
+            
             const list = document.getElementById('station-list'); list.innerHTML = '';
             const tIdx = config.types.indexOf(selType);
             
             if(tIdx > 4) { // 回送・試運転
-                 const b = document.createElement('button'); b.className = "st-btn"; b.innerText = "特殊運用開始";
+                 const b = document.createElement('button'); b.className = "st-btn"; b.innerText = "特殊運用（全駅通過）開始";
                  b.onclick = () => conn.send({ type:'update', now:'---', next:'---', trainType:selType, dest:"", bound:selBound });
                  list.appendChild(b); return;
             }
@@ -156,30 +144,11 @@
 
         function sendDoor(s, side='none') { if(conn) conn.send({ type:'door', status:s, side:side }); }
         function sendTicker(t) { if(conn) conn.send({ type:'ticker', text:t }); }
-        function toggleCut() { isCut = !isCut; document.getElementById('cut-switch').innerText = isCut ? "3/4 締切：ON" : "3/4 締切：OFF"; document.getElementById('cut-switch').className = isCut ? 'active' : ''; if(conn) conn.send({ type:'cut', active:isCut }); }
+        function toggleCut() { isCut = !isCut; document.getElementById('cut-switch').innerText = isCut ? "3/4締切: ON" : "3/4締切: OFF"; document.getElementById('cut-switch').className = isCut ? 'active' : ''; if(conn) conn.send({ type:'cut', active:isCut }); }
+        function toggleSOS() { isSos = !isSos; document.getElementById('sos-btn').className = isSos ? 'emergency-btn active' : 'emergency-btn'; if(conn) conn.send({ type:'emergency', active:isSos }); }
         function setDir(d) { selBound = d; updateUI(); }
-
-        async function micOn() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                peer.call(new URLSearchParams(window.location.search).get('id'), localStream);
-                audioContext = new AudioContext();
-                const src = audioContext.createMediaStreamSource(localStream);
-                analyser = audioContext.createAnalyser(); src.connect(analyser);
-                dataArray = new Uint8Array(analyser.frequencyBinCount);
-                const loop = () => {
-                    analyser.getByteFrequencyData(dataArray);
-                    let sum = 0; for(let v of dataArray) sum += v;
-                    document.getElementById('v-bar').style.width = Math.min((sum/dataArray.length)*2.5, 100) + "%";
-                    animationId = requestAnimationFrame(loop);
-                }; loop();
-            } catch(e) { alert("マイク使用を許可してください"); }
-        }
-        function micOff() {
-            if(localStream) localStream.getTracks().forEach(t => t.stop());
-            if(audioContext) audioContext.close();
-            cancelAnimationFrame(animationId); document.getElementById('v-bar').style.width = "0%";
-        }
+        async function micOn() { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); peer.call(new URLSearchParams(window.location.search).get('id'), localStream); }
+        function micOff() { if(localStream) localStream.getTracks().forEach(t => t.stop()); }
     </script>
 </body>
 </html>
