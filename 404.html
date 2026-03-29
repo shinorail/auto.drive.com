@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Not Found - 館浜電鉄</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .container {
+            border: 5px solid #444;
+            padding: 40px;
+            border-radius: 20px;
+            background: #222;
+            max-width: 500px;
+        }
+        .error-code {
+            font-size: 80px;
+            font-weight: bold;
+            color: #ff3b30;
+            margin: 0;
+            line-height: 1;
+        }
+        .maku-style {
+            background: #000;
+            border: 3px solid #fff;
+            padding: 10px;
+            display: inline-block;
+            margin: 20px 0;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .btn-home {
+            display: inline-block;
+            background: #2ecc71;
+            color: #fff;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .btn-home:hover {
+            background: #27ae60;
+        }
+        .rail-icon {
+            font-size: 50px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="rail-icon">⚠️</div>
+        <p class="error-code">404</p>
+        <div class="maku-style">運休 / OUT OF SERVICE</div>
+        <p class="message">
+            申し訳ございません。<br>
+            お探しの列車（ページ）は見つかりませんでした。<br>
+            URLが間違っているか、廃線（削除）された可能性があります。
+        </p>
+        <a href="index.html" class="btn-home">ホーム（運転台）へ戻る</a>
+        <p style="margin-top:30px; color:#666; font-size:12px;">Studio Zen-Node / 館浜電鉄</p>
+    </div>
+</body>
+</html>
