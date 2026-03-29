@@ -7,29 +7,30 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 140px; user-select: none; }
-        .label { font-size: 12px; color: #888; margin: 15px 0 5px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        button { background: #333; border: none; color: #fff; padding: 12px 5px; border-radius: 8px; font-weight: bold; }
+        .label { font-size: 12px; color: #888; margin: 10px 0 5px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        button { background: #333; border: none; color: #fff; padding: 10px 5px; border-radius: 6px; font-weight: bold; }
         button.active { background: #ffcc00; color: #000; }
-        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 5px; font-size: 17px; }
-        .stop { border-left-color: #2ecc71; opacity: 1; }
+        .st-btn { width: 100%; text-align: left; padding: 15px; margin-bottom: 5px; background: #222; border-left: 8px solid #444; border-radius: 4px; font-size: 16px; }
+        .stop { border-left-color: #2ecc71; }
         .pass { border-left-color: #555; opacity: 0.2; pointer-events: none; }
-        
-        /* 放送コントロールエリア */
-        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; z-index: 100; border-top: 1px solid #444; }
-        #mic-btn { width: 90%; height: 70px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; border-radius: 10px; }
-        #mic-btn:active { background: #fff; color: #ff3b30; }
-        
-        /* 音量レベルメーター */
-        #v-meter-wrap { width: 90%; height: 10px; background: #000; margin: 8px auto; border-radius: 5px; overflow: hidden; }
-        #v-meter-bar { width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s; }
+        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; border-top: 1px solid #444; }
+        #mic-btn { width: 90%; height: 60px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 18px; font-weight: bold; border-radius: 10px; }
+        #v-meter-wrap { width: 90%; height: 6px; background: #000; margin: 5px auto; border-radius: 3px; overflow: hidden; }
+        #v-meter-bar { width: 0%; height: 100%; background: #2ecc71; }
     </style>
 </head>
 <body onload="init()">
-    <div id="status" style="text-align:center; font-size:12px; padding:10px; color:#aaa;">PeerJS 接続待機中...</div>
+    <div id="status" style="text-align:center; font-size:11px; padding:5px; color:#aaa;">接続待機中</div>
+
+    <div class="label">運行方面</div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <button id="b-katihama" onclick="setDirection('館浜')">館浜 方面</button>
+        <button id="b-akayama" onclick="setDirection('赤山町')">赤山町 方面</button>
+    </div>
 
     <div class="label">種別 / 行先</div>
-    <div id="type-grid" class="grid" style="margin-bottom:10px;"></div>
+    <div id="type-grid" class="grid" style="margin-bottom:8px;"></div>
     <div id="dest-grid" class="grid"></div>
 
     <div class="label">駅選択</div>
@@ -45,22 +46,33 @@
             types: ["普通", "準急", "急行", "快急", "特急"],
             dests: ["館浜", "新井川", "赤山町"],
             stations: [
-                { name: "赤山町", stop: [1,1,1,1,1] }, { name: "西赤山", stop: [1,1,1,0,0] },
-                { name: "奥峯口", stop: [1,1,1,0,0] }, { name: "日野森", stop: [1,1,1,1,0] },
-                { name: "高見沢", stop: [1,1,1,0,0] }, { name: "水越",   stop: [1,1,1,1,0] },
-                { name: "藤江",   stop: [1,1,1,1,0] }, { name: "大道寺", stop: [1,1,1,1,1] },
-                { name: "江ノ原", stop: [1,1,1,0,0] }, { name: "新野崎", stop: [1,1,1,1,0] },
-                { name: "新井川", stop: [1,0,0,0,0] }, { name: "羽衣橋", stop: [1,0,0,0,0] },
-                { name: "浜園",   stop: [1,1,0,0,0] }, { name: "津崎",   stop: [1,0,0,0,0] },
-                { name: "虹ケ浜", stop: [1,0,0,0,0] }, { name: "海岸公園", stop: [1,0,0,0,0] },
-                { name: "河原崎", stop: [1,0,0,0,0] }, { name: "駒野",   stop: [1,1,0,0,0] },
-                { name: "館浜",   stop: [1,1,1,1,1] }
+                // isTerminal: true なら到着時に「終点」と表示
+                { name: "赤山町", stop: [1,1,1,1,1], isTerminal: false }, // 延伸予定なのでfalse
+                { name: "西赤山", stop: [1,1,1,0,0], isTerminal: false },
+                { name: "奥峯口", stop: [1,1,1,0,0], isTerminal: false },
+                { name: "日野森", stop: [1,1,1,1,0], isTerminal: false },
+                { name: "高見沢", stop: [1,1,1,0,0], isTerminal: false },
+                { name: "水越",   stop: [1,1,1,1,0], isTerminal: false },
+                { name: "藤江",   stop: [1,1,1,1,0], isTerminal: false },
+                { name: "大道寺", stop: [1,1,1,1,1], isTerminal: false },
+                { name: "江ノ原", stop: [1,1,1,0,0], isTerminal: false },
+                { name: "新野崎", stop: [1,1,1,1,0], isTerminal: false },
+                { name: "新井川", stop: [1,0,0,0,0], isTerminal: false },
+                { name: "羽衣橋", stop: [1,0,0,0,0], isTerminal: false },
+                { name: "浜園",   stop: [1,1,0,0,0], isTerminal: false },
+                { name: "津崎",   stop: [1,0,0,0,0], isTerminal: false },
+                { name: "虹ケ浜", stop: [1,0,0,0,0], isTerminal: false },
+                { name: "海岸公園", stop: [1,0,0,0,0], isTerminal: false },
+                { name: "河原崎", stop: [1,0,0,0,0], isTerminal: false },
+                { name: "駒野",   stop: [1,1,0,0,0], isTerminal: false },
+                { name: "館浜",   stop: [1,1,1,1,1], isTerminal: true }  // ここは終点
             ]
         };
 
         let conn, peer, currentCall, localStream, audioContext, analyser, dataArray, animationId;
         let selType = config.types[0];
         let selDest = config.dests[0];
+        let selBound = "館浜";
 
         function init() {
             const tg = document.getElementById('type-grid');
@@ -79,34 +91,48 @@
             connect();
         }
 
+        function setDirection(dir) { selBound = dir; updateUI(); }
+
         function connect() {
             const id = new URLSearchParams(window.location.search).get('id');
-            if(!id) { document.getElementById('status').innerText = "エラー: IDが見つかりません"; return; }
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id, { reliable: true });
-                conn.on('open', () => { document.getElementById('status').innerText = "● PCに接続しました"; document.getElementById('status').style.color = "#2ecc71"; });
+                conn.on('open', () => { document.getElementById('status').innerText = "● PC接続完了"; });
             });
             updateUI();
         }
 
         function updateUI() {
+            document.getElementById('b-katihama').className = selBound === '館浜' ? 'active' : '';
+            document.getElementById('b-akayama').className = selBound === '赤山町' ? 'active' : '';
             document.querySelectorAll('#type-grid button').forEach(b => b.className = b.innerText === selType ? 'active' : '');
             document.querySelectorAll('#dest-grid button').forEach(b => b.className = b.innerText === selDest ? 'active' : '');
+
             const list = document.getElementById('station-list'); list.innerHTML = '';
             const typeIdx = config.types.indexOf(selType);
-            config.stations.forEach((st, i) => {
+            let displayStations = [...config.stations];
+            if(selBound === "赤山町") displayStations.reverse();
+
+            displayStations.forEach((st, i) => {
                 const isStop = st.stop[typeIdx] === 1;
                 const b = document.createElement('button');
                 b.className = `st-btn ${isStop ? 'stop' : 'pass'}`;
                 b.innerText = st.name;
                 if(isStop) {
                     b.onclick = () => {
-                        let next = "終点";
-                        for (let j = i + 1; j < config.stations.length; j++) {
-                            if (config.stations[j].stop[typeIdx] === 1) { next = config.stations[j].name; break; }
+                        let next = "";
+                        // 次の停車駅を探す
+                        for (let j = i + 1; j < displayStations.length; j++) {
+                            if (displayStations[j].stop[typeIdx] === 1) {
+                                next = displayStations[j].name; break;
+                            }
                         }
-                        if(conn) conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest });
+                        // 次がない場合、終点フラグを確認
+                        if (!next) {
+                            next = st.isTerminal ? "終点" : "---";
+                        }
+                        if(conn) conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest, bound: selBound });
                     };
                 }
                 list.appendChild(b);
@@ -118,31 +144,23 @@
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 currentCall = peer.call(id, localStream);
-                
-                // 音量メーターの開始
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const source = audioContext.createMediaStreamSource(localStream);
                 analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
                 source.connect(analyser);
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 drawMeter();
-                
-            } catch (err) { alert("マイクへのアクセスを許可してください"); }
+            } catch (err) {}
         }
-
         function drawMeter() {
             analyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for(let i = 0; i < dataArray.length; i++) { sum += dataArray[i]; }
-            let average = sum / dataArray.length;
-            document.getElementById('v-meter-bar').style.width = Math.min(average * 2, 100) + "%";
+            let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
+            document.getElementById('v-meter-bar').style.width = Math.min((sum/dataArray.length)*2, 100) + "%";
             animationId = requestAnimationFrame(drawMeter);
         }
-
         function micOff() {
             if (currentCall) currentCall.close();
-            if (localStream) localStream.getTracks().forEach(track => track.stop());
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
             if (audioContext) audioContext.close();
             cancelAnimationFrame(animationId);
             document.getElementById('v-meter-bar').style.width = "0%";
