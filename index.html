@@ -7,199 +7,69 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root {
-            --bg-base: #f1f1f1;
-            --screen-bg: #fff;
-            --black: #000;
-            --gray: #666;
-            --th-green: #2ecc71;
-            --sub-blue: #007aff;
-            --font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
-        }
-
-        body {
-            background-color: #333;
-            margin: 0; padding: 0;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; overflow: hidden;
-            font-family: var(--font-family);
-        }
-
-        /* 画面が小さくても崩れないようにスケーリングする外枠 */
-        #scale-wrapper {
-            width: 1326px;
-            height: 746px;
-            transform-origin: center;
-            flex-shrink: 0;
-        }
-
-        .display-container {
-            width: 100%;
-            height: 100%;
-            background: var(--screen-bg);
-            border: 5px solid #000;
-            position: relative;
-            color: var(--black);
-            overflow: hidden;
-        }
-
-        /* --- 左側 (ロゴ) --- */
-        #left-screen {
-            position: absolute; left: 0; top: 0; bottom: 0;
-            width: 300px;
-            background-color: var(--screen-bg);
-            border-right: 4px solid #ccc;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        #th-logo { font-size: 50px; font-weight: bold; border: 4px solid var(--black); padding: 10px 20px; margin-bottom: 10px;}
-
-        /* --- メインエリア --- */
+        :root { --bg-base: #f1f1f1; --screen-bg: #fff; --black: #000; --gray: #666; --th-green: #2ecc71; }
+        body { background-color: #333; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        #scale-wrapper { width: 1326px; height: 746px; transform-origin: center; flex-shrink: 0; }
+        .display-container { width: 100%; height: 100%; background: var(--screen-bg); border: 5px solid #000; position: relative; overflow: hidden; }
+        #left-screen { position: absolute; left: 0; top: 0; bottom: 0; width: 300px; border-right: 4px solid #ccc; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #main-screen { margin-left: 304px; position: relative; height: 100%; }
-
-        header {
-            height: 140px; border-bottom: 4px solid var(--black);
-            display: flex; align-items: center; padding: 0 30px; position: relative;
-        }
+        header { height: 140px; border-bottom: 4px solid var(--black); display: flex; align-items: center; padding: 0 30px; position: relative; }
         .header-type { font-size: 40px; font-weight: bold; border: 4px solid var(--black); padding: 5px 20px; margin-right: 20px; }
         .header-dest { font-size: 40px; font-weight: bold; margin-right: 20px; }
         .header-line-name { font-size: 30px; color: var(--th-green); font-weight: bold; border-right: 2px solid #ccc; padding-right: 20px; }
-        
         .header-st-group { margin-left: 40px; }
         .header-tadaima { font-size: 20px; color: var(--gray); display: block; }
-        .header-st { font-size: 85px; font-weight: bold; line-height: 1; letter-spacing: 0.05em; }
-
+        .header-st { font-size: 85px; font-weight: bold; line-height: 1; }
         .header-info-right { position: absolute; right: 30px; top: 20px; text-align: right; }
         .header-clock { font-size: 35px; font-weight: bold; }
-        .header-gousha { font-size: 20px; color: var(--gray); }
-
-        /* --- 路線図 --- */
         main { padding: 40px 40px; }
         .st-list { display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px; }
-        .st-item { width: 40px; font-size: 22px; font-weight: bold; line-height: 1.1; text-align: center; writing-mode: vertical-rl; }
-
-        .line-graph {
-            width: 100%; height: 45px; background-color: #eee;
-            border-radius: 25px; position: relative; margin: 30px 0;
-        }
-        .line-bar {
-            position: absolute; left: 0; top: 0; bottom: 0; width: 10%; 
-            background-color: var(--th-green); border-radius: 25px 0 0 25px;
-        }
-
+        .st-item { width: 40px; font-size: 22px; font-weight: bold; text-align: center; writing-mode: vertical-rl; }
+        .line-graph { width: 100%; height: 45px; background-color: #eee; border-radius: 25px; position: relative; margin: 30px 0; }
+        .line-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 10%; background-color: var(--th-green); border-radius: 25px 0 0 25px; }
         .st-markers { display: flex; justify-content: space-between; width: 100%; }
         .marker-item { display: flex; flex-direction: column; align-items: center; width: 60px; }
         .marker-circle { width: 18px; height: 18px; background: #000; border-radius: 50%; margin-bottom: 10px; }
-        .time-text { font-size: 20px; color: var(--gray); font-weight: bold; margin-bottom: 5px; }
-        .num-box {
-            font-size: 14px; font-weight: bold; border: 2px solid var(--black); border-radius: 4px;
-            width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-        }
-
-        footer {
-            position: absolute; bottom: 30px; left: 40px; right: 40px;
-            border-top: 2px solid #eee; padding-top: 15px; font-size: 18px; color: var(--gray);
-        }
-
-        /* --- QRコードオーバーレイ --- */
-        #qr-box {
-            position: absolute; right: 20px; bottom: 20px;
-            background: #fff; border: 2px solid #000; padding: 15px;
-            text-align: center; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
+        .num-box { font-size: 14px; font-weight: bold; border: 2px solid var(--black); border-radius: 4px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+        #qr-box { position: absolute; right: 20px; bottom: 20px; background: #fff; border: 2px solid #000; padding: 15px; text-align: center; border-radius: 10px; }
     </style>
 </head>
 <body onclick="enableAudio()">
-
     <div id="scale-wrapper">
         <div class="display-container">
-            <div id="left-screen">
-                <div id="th-logo">TH<br>館浜</div>
-                <p style="font-weight:bold; color:#666;">館浜電鉄</p>
-            </div>
-
+            <div id="left-screen"><div style="font-size:50px; font-weight:bold; border:4px solid #000; padding:10px;">TH<br>館浜</div></div>
             <div id="main-screen">
                 <header>
                     <div class="header-type" id="display-type">普通</div>
-                    <div class="header-dest">新井川 ゆき</div>
-                    <div class="header-line-name">館濱線</div>
+                    <div class="header-dest" id="display-dest">新井川 ゆき</div>
+                    <div class="header-line-name" id="display-line">館濱線</div>
                     <div class="header-st-group">
                         <span class="header-tadaima">ただいま</span>
                         <div class="header-st" id="st-name-main">館浜</div>
                     </div>
-                    <div class="header-info-right">
-                        <div class="header-clock" id="clock">12:12</div>
-                        <div class="header-gousha">2 号車</div>
-                    </div>
+                    <div class="header-info-right"><div class="header-clock" id="clock">12:12</div></div>
                 </header>
-
                 <main>
-                    <div class="st-list">
-                        <div class="st-item">館浜</div>
-                        <div class="st-item">駒野</div>
-                        <div class="st-item">河原崎</div>
-                        <div class="st-item">海岸公園</div>
-                        <div class="st-item">虹ケ浜</div>
-                        <div class="st-item">津崎</div>
-                        <div class="st-item">浜園</div>
-                        <div class="st-item">羽衣橋</div>
-                        <div class="st-item">新井川</div>
-                    </div>
-                    <div class="line-graph">
-                        <div class="line-bar"></div>
-                    </div>
-                    <div class="st-markers">
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">●</div><div class="num-box">JO19</div></div>
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">6</div><div class="num-box">JO18</div></div>
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">10</div><div class="num-box">JO17</div></div>
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">13</div><div class="num-box">JO16</div></div>
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">17</div><div class="num-box">JO15</div></div>
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">20</div><div class="num-box">JO14</div></div>
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">25</div><div class="num-box">JO13</div></div>
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">28</div><div class="num-box">JO12</div></div>
-                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">32</div><div class="num-box">JO11</div></div>
-                    </div>
+                    <div class="st-list" id="st-labels"></div>
+                    <div class="line-graph"><div class="line-bar"></div></div>
+                    <div class="st-markers" id="st-dots"></div>
                 </main>
-
-                <footer>
-                    のりかえ、待合時間は含まれません。電車により多少時間が異なります。
-                </footer>
             </div>
-
-            <div id="qr-box">
-                <div id="qrcode"></div>
-                <p style="font-size:12px; margin:10px 0 0 0; font-weight:bold;">スマホでスキャン</p>
-                <p id="peer-id-label" style="font-size:10px; color:#999;"></p>
-            </div>
+            <div id="qr-box"><div id="qrcode"></div><p style="font-size:12px; margin-top:5px;">スマホでスキャン</p></div>
         </div>
     </div>
-
     <audio id="remote-audio" autoplay playsinline></audio>
-
     <script>
-        // --- 画面のスケーリング処理 ---
         function setScale() {
-            const wrapper = document.getElementById('scale-wrapper');
             const scale = Math.min(window.innerWidth / 1326, window.innerHeight / 746);
-            wrapper.style.transform = `scale(${scale})`;
+            document.getElementById('scale-wrapper').style.transform = `scale(${scale})`;
         }
-        window.addEventListener('resize', setScale);
-        setScale();
+        window.addEventListener('resize', setScale); setScale();
 
-        // --- 通信処理 ---
-        const MASTER_ID = "TH-SYSTEM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
-        const peer = new Peer(MASTER_ID);
-
+        const peer = new Peer("TH-SYSTEM-MAIN");
         peer.on('open', (id) => {
-            document.getElementById('peer-id-label').innerText = "ID: " + id;
-            const targetUrl = window.location.href.replace('index.html', 'con.html') + "?id=" + id;
-            
-            // QRコード生成
-            document.getElementById("qrcode").innerHTML = "";
-            new QRCode(document.getElementById("qrcode"), {
-                text: targetUrl,
-                width: 150,
-                height: 150
-            });
+            const url = window.location.href.replace('index.html', 'con.html') + "?id=" + id;
+            new QRCode(document.getElementById("qrcode"), { text: url, width: 120, height: 120 });
         });
 
         peer.on('connection', (conn) => {
@@ -207,24 +77,28 @@
             conn.on('data', (data) => {
                 if(data.type === 'station') document.getElementById('st-name-main').innerText = data.val;
                 if(data.type === 'type') document.getElementById('display-type').innerText = data.val;
+                if(data.type === 'dest') document.getElementById('display-dest').innerText = data.val + " ゆき";
+                if(data.type === 'line') document.getElementById('display-line').innerText = data.val;
             });
         });
 
         peer.on('call', (call) => {
             call.answer();
-            call.on('stream', (stream) => {
-                const audio = document.getElementById('remote-audio');
-                audio.srcObject = stream;
-                audio.play();
-            });
+            call.on('stream', (s) => { document.getElementById('remote-audio').srcObject = s; });
         });
 
         function enableAudio() { document.getElementById('remote-audio').play().then(()=>document.getElementById('remote-audio').pause()); }
-
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').innerText = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
         }, 1000);
+
+        // 初期駅リスト生成
+        const sts = ["館浜", "駒野", "河原崎", "海岸公園", "虹ケ浜", "津崎", "浜園", "羽衣橋", "新井川"];
+        sts.forEach((s, i) => {
+            document.getElementById('st-labels').innerHTML += `<div class="st-item">${s}</div>`;
+            document.getElementById('st-dots').innerHTML += `<div class="marker-item"><div class="marker-circle"></div><div class="num-box">JO${19-i}</div></div>`;
+        });
     </script>
 </body>
 </html>
