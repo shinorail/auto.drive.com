@@ -3,34 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 操作パネル</title>
+    <title>館浜電鉄 操作パネル V5</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 220px; user-select: none; }
-        .label { font-size: 11px; color: #aaa; margin: 12px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; text-transform: uppercase; }
-        
-        /* ドアカットスイッチ */
-        .cut-btn { width: 100%; height: 50px; background: #333; border: 2px solid #555; color: #fff; border-radius: 8px; font-weight: bold; font-size: 16px; margin-bottom: 10px; }
-        .cut-btn.active { background: #ff3b30; border-color: #ff3b30; }
-
-        /* ドア操作 */
-        .door-ctrl { background: #222; padding: 10px; border-radius: 12px; border: 1px solid #444; margin-bottom: 15px; }
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .door-btn { height: 65px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; color: #fff; }
-        .open-btn { background: #e67e22; }
-        .close-btn { background: #2980b9; }
-
-        /* 設定系 */
-        .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        .dg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 100px; overflow-y: auto; background: #1a1a1a; padding: 8px; border-radius: 6px; }
-        button { background: #444; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; }
+        .label { font-size: 11px; color: #aaa; margin: 12px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        button { background: #333; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 13px; }
         button.active { background: #ffcc00; color: #000; }
-
-        /* 駅名リスト */
-        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 18px; display: block; color: #fff; }
-        
-        /* マイク放送 */
-        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; z-index: 100; }
+        .open-btn { background: #e67e22; height: 60px; font-size: 16px; }
+        .close-btn { background: #2980b9; height: 60px; font-size: 16px; }
+        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 18px; color: #fff; }
+        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; }
         #mic-btn { width: 90%; height: 75px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; border-radius: 15px; touch-action: none; }
         #v-meter { height: 6px; background: #000; width: 90%; margin: 0 auto 10px; border-radius: 3px; overflow: hidden; }
         #v-bar { width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s; }
@@ -39,27 +24,32 @@
 <body onload="init()">
     <div id="status" style="text-align:center; font-size:12px; padding:6px; background:#333;">接続待機中...</div>
 
-    <div class="label">1. ドアカット (3/4 締切)</div>
-    <button id="cut-switch" class="cut-btn" onclick="toggleCut()">3/4 締切：OFF</button>
+    <div class="label">1. 種別・特殊運用</div>
+    <div id="type-grid" class="grid"></div>
 
-    <div class="label">2. ドア開閉 (リアルタイム操作)</div>
-    <div class="door-ctrl">
-        <div class="grid2" style="margin-bottom:10px;">
-            <button class="door-btn open-btn" onclick="sendDoor('open', 'left')">◀ 左ドア開</button>
-            <button class="door-btn open-btn" onclick="sendDoor('open', 'right')">右ドア開 ▶</button>
-        </div>
-        <button class="door-btn close-btn" style="width:100%" onclick="sendDoor('close')">■ ドア全閉 (発車)</button>
+    <div class="label">2. 運行情報テロップ</div>
+    <div class="grid">
+        <button onclick="sendTicker('平常通り運転しています。')">平常</button>
+        <button onclick="sendTicker('強風の影響で遅れが出ています。')" style="background:#8e44ad">遅延</button>
+        <button onclick="sendTicker('単線区間での列車行き違いのため、停車いたします。')" style="background:#d35400">行き違い</button>
     </div>
 
-    <div class="label">3. 運行設定 (方面・種別・行先)</div>
+    <div class="label">3. ドア操作・3/4締切</div>
+    <button id="cut-switch" style="width:100%; height:45px; margin-bottom:10px;" onclick="toggleCut()">3/4 締切：OFF</button>
+    <div class="grid2">
+        <button class="open-btn" onclick="sendDoor('open', 'left')">◀ 左ドア開</button>
+        <button class="open-btn" onclick="sendDoor('open', 'right')">右ドア開 ▶</button>
+        <button class="close-btn" style="grid-column: span 2" onclick="sendDoor('close')">■ ドア全閉</button>
+    </div>
+
+    <div class="label">4. 行先・方面設定</div>
     <div class="grid2" style="margin-bottom:8px;">
         <button id="b-katihama" onclick="setDir('館浜')">館浜 方面</button>
         <button id="b-akayama" onclick="setDir('赤山町')">赤山町 方面</button>
     </div>
-    <div id="type-grid" class="grid3" style="margin-bottom:8px;"></div>
-    <div id="dest-grid" class="dg"></div>
+    <div id="dest-grid" class="grid" style="grid-template-columns:repeat(4, 1fr)"></div>
 
-    <div class="label">4. 次の駅を選択 (放送連動)</div>
+    <div class="label">5. 駅選択 (案内放送連動)</div>
     <div id="station-list"></div>
 
     <div id="mic-container">
@@ -69,18 +59,12 @@
 
     <script>
         const config = {
-            types: ["普通", "準急", "急行", "快急", "特急"],
+            types: ["普通", "準急", "急行", "特急", "回送", "試運転"],
             stations: [
-                { name: "赤山町", stop: [1,1,1,1,1] }, { name: "西赤山", stop: [1,1,1,0,0] },
-                { name: "奥峯口", stop: [1,1,1,0,0] }, { name: "日野森", stop: [1,1,1,1,0] },
-                { name: "高見沢", stop: [1,1,1,0,0] }, { name: "水越",   stop: [1,1,1,1,0] },
-                { name: "藤江",   stop: [1,1,1,1,0] }, { name: "大道寺", stop: [1,1,1,1,1] },
-                { name: "江ノ原", stop: [1,1,1,0,0] }, { name: "新野崎", stop: [1,1,1,1,0] },
-                { name: "新井川", stop: [1,0,0,0,0] }, { name: "羽衣橋", stop: [1,0,0,0,0] },
-                { name: "浜園",   stop: [1,1,0,0,0] }, { name: "津崎",   stop: [1,0,0,0,0] },
-                { name: "虹ケ浜", stop: [1,0,0,0,0] }, { name: "海岸公園", stop: [1,0,0,0,0] },
-                { name: "河原崎", stop: [1,0,0,0,0] }, { name: "駒野",   stop: [1,1,0,0,0] },
-                { name: "館浜",   stop: [1,1,1,1,1] }
+                { name: "赤山町", stop: [1,1,1,1,1,1], trans: "" },
+                { name: "大道寺", stop: [1,1,1,1,1,1], trans: "JR線・モノレール" },
+                { name: "駒野",   stop: [1,1,0,0,1,1], trans: "" },
+                { name: "館浜",   stop: [1,1,1,1,1,1], trans: "海岸線" }
             ]
         };
 
@@ -98,35 +82,18 @@
                 const b = document.createElement('button'); b.innerText = st.name;
                 b.onclick = () => { selDest = st.name; updateUI(); }; dg.appendChild(b);
             });
-            
             const mb = document.getElementById('mic-btn');
             mb.onpointerdown = (e) => { e.preventDefault(); micOn(); };
             mb.onpointerup = mb.onpointerleave = micOff;
             connect();
         }
 
-        function toggleCut() {
-            isCut = !isCut;
-            document.getElementById('cut-switch').innerText = isCut ? "3/4 締切：ON" : "3/4 締切：OFF";
-            document.getElementById('cut-switch').className = `cut-btn ${isCut?'active':''}`;
-            if(conn) conn.send({ type: 'cut', active: isCut });
-        }
-
-        function sendDoor(status, side='none') {
-            if(conn) conn.send({ type: 'door', status: status, side: side });
-        }
-
-        function setDir(dir) { selBound = dir; updateUI(); }
-
         function connect() {
             const id = new URLSearchParams(window.location.search).get('id');
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id);
-                conn.on('open', () => { 
-                    document.getElementById('status').innerText = "ONLINE (PC接続済み)";
-                    document.getElementById('status').style.background = "#2ecc71";
-                });
+                conn.on('open', () => { document.getElementById('status').innerText = "ONLINE"; document.getElementById('status').style.background = "#2ecc71"; });
             });
             updateUI();
         }
@@ -137,33 +104,28 @@
             document.querySelectorAll('#type-grid button').forEach(b => b.className = b.innerText === selType ? 'active' : '');
             document.querySelectorAll('#dest-grid button').forEach(b => b.className = b.innerText === selDest ? 'active' : '');
 
-            const list = document.getElementById('station-list');
-            list.innerHTML = '';
+            const list = document.getElementById('station-list'); list.innerHTML = '';
             const tIdx = config.types.indexOf(selType);
-            let sts = [...config.stations];
-            if(selBound === "赤山町") sts.reverse();
+            let sts = (selBound === "赤山町") ? [...config.stations].reverse() : [...config.stations];
 
-            let foundDest = false;
             sts.forEach((st, i) => {
-                if(foundDest) return;
                 if(st.stop[tIdx] === 1) {
-                    const b = document.createElement('button');
-                    b.className = "st-btn";
-                    b.innerText = st.name;
+                    const b = document.createElement('button'); b.className = "st-btn"; b.innerText = st.name;
                     b.onclick = () => {
                         let next = "終点";
-                        for(let j=i+1; j<sts.length; j++) {
-                            if(sts[j].stop[tIdx] === 1) { next = sts[j].name; break; }
-                            if(sts[j].name === selDest) { next = selDest; break; }
-                        }
+                        for(let j=i+1; j<sts.length; j++) { if(sts[j].stop[tIdx] === 1) { next = sts[j].name; break; } }
                         if(st.name === selDest) next = "終点";
-                        if(conn) conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest, bound: selBound });
+                        if(conn) conn.send({ type:'update', now:st.name, next:next, trainType:selType, dest:selDest, bound:selBound, transfer:st.trans });
                     };
                     list.appendChild(b);
                 }
-                if(st.name === selDest) foundDest = true;
             });
         }
+
+        function sendDoor(s, side='none') { if(conn) conn.send({ type:'door', status:s, side:side }); }
+        function sendTicker(t) { if(conn) conn.send({ type:'ticker', text:t }); }
+        function toggleCut() { isCut = !isCut; document.getElementById('cut-switch').innerText = isCut ? "3/4 締切：ON" : "3/4 締切：OFF"; document.getElementById('cut-switch').className = isCut ? 'active' : ''; conn.send({ type:'cut', active:isCut }); }
+        function setDir(d) { selBound = d; updateUI(); }
 
         async function micOn() {
             const id = new URLSearchParams(window.location.search).get('id');
@@ -172,23 +134,20 @@
                 peer.call(id, localStream);
                 audioContext = new AudioContext();
                 const src = audioContext.createMediaStreamSource(localStream);
-                analyser = audioContext.createAnalyser();
-                src.connect(analyser);
+                analyser = audioContext.createAnalyser(); src.connect(analyser);
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 const loop = () => {
                     analyser.getByteFrequencyData(dataArray);
                     let sum = 0; for(let v of dataArray) sum += v;
                     document.getElementById('v-bar').style.width = (sum/dataArray.length)*2.5 + "%";
                     animationId = requestAnimationFrame(loop);
-                };
-                loop();
+                }; loop();
             } catch(e) { alert("マイクを許可してください"); }
         }
         function micOff() {
             if(localStream) localStream.getTracks().forEach(t => t.stop());
             if(audioContext) audioContext.close();
-            cancelAnimationFrame(animationId);
-            document.getElementById('v-bar').style.width = "0%";
+            cancelAnimationFrame(animationId); document.getElementById('v-bar').style.width = "0%";
         }
     </script>
 </body>
