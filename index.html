@@ -3,298 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>館浜電鉄 次世代型案内表示機 (E235風)</title>
+    <title>館浜電鉄 案内表示システム</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
-            --bg-base: #f1f1f1; /* 筐体色 */
-            --screen-bg: #fff; /* 液晶白背景 */
+            --bg-base: #f1f1f1;
+            --screen-bg: #fff;
             --black: #000;
             --gray: #666;
-            --th-green: #2ecc71; /* 館浜電鉄 コーポレートカラー */
-            --sub-blue: #007aff; /* 乗り換えなど */
-            /* フォント: 画像に最も近いものを指定 */
-            --font-family: "Hiragino Kaku Gothic ProN", "Meiryo", "Avenir Next Condensed", sans-serif;
+            --th-green: #2ecc71;
+            --sub-blue: #007aff;
+            --font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
         }
 
         body {
-            background-color: var(--bg-base);
+            background-color: #333;
             margin: 0; padding: 0;
             display: flex; justify-content: center; align-items: center;
-            height: 100vh;
-            overflow: hidden;
+            height: 100vh; overflow: hidden;
             font-family: var(--font-family);
         }
 
-        /* 画面全体の枠 (液晶画面) */
-        .display-container {
-            width: 1326px; /* 16:9比率 */
+        /* 画面が小さくても崩れないようにスケーリングする外枠 */
+        #scale-wrapper {
+            width: 1326px;
             height: 746px;
+            transform-origin: center;
+            flex-shrink: 0;
+        }
+
+        .display-container {
+            width: 100%;
+            height: 100%;
             background: var(--screen-bg);
-            border: 10px solid #ccc; /* 液晶のベゼル */
-            border-radius: 8px;
+            border: 5px solid #000;
             position: relative;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
             color: var(--black);
             overflow: hidden;
         }
 
-        /* --- ヘッダー --- */
-        header {
-            position: absolute; top: 0; left: 0; right: 0;
-            height: 110px;
-            border-bottom: 3px solid var(--black);
-            display: flex; align-items: center;
-            padding: 0 40px;
-        }
-        .header-type { font-size: 36px; font-weight: bold; border: 3px solid var(--black); padding: 4px 16px; margin-right: 20px; }
-        .header-dest { font-size: 48px; font-weight: bold; margin-right: 30px; letter-spacing: -2px; }
-        .header-num { font-size: 40px; color: var(--th-green); font-weight: bold; border-right: 2px solid var(--gray); padding-right: 20px; }
-        .header-tadaima { font-size: 24px; color: var(--gray); position: absolute; left: 450px; top: 15px;}
-        .header-st { font-size: 80px; font-weight: bold; position: absolute; left: 450px; bottom: 0; letter-spacing: 0.1em;}
-        .header-clock { position: absolute; right: 80px; top: 15px; font-size: 32px; font-weight: bold; }
-        .header-gousha { position: absolute; right: 40px; top: 15px; font-size: 24px; color: var(--gray);}
-
-        /* --- メインコンテンツ (停車駅一覧) --- */
-        main {
-            margin-top: 140px;
-            padding: 0 60px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* 駅名リスト (横並び) */
-        .st-list {
-            display: flex;
-            justify-content: flex-start;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        .st-item {
-            display: flex; flex-direction: column; align-items: center;
-            width: 100px; /* 横須賀のような縦書きはCSSだけで再現するのは難易度が高いので、横書きを縦に並べる方式で */
-        }
-        .st-item div { font-size: 20px; font-weight: bold; line-height: 1.2; text-align: center;}
-        
-        /* 路線図 (横棒) */
-        .line-graph {
-            width: 100%; height: 50px;
-            background-color: #ddd;
-            border-radius: 25px;
-            position: relative;
-            margin: 20px 0;
-        }
-        .line-bar {
-            position: absolute; left: 0; top: 0; bottom: 0;
-            width: 15%; /* ここを駅の進捗に応じて動かす (今回は固定) */
-            background-color: var(--th-green);
-            border-radius: 25px 0 0 25px;
-        }
-        .line-bar::after { /* 現在駅の矢印 */
-            content: ''; position: absolute; right: -20px; top: 0;
-            border-top: 25px solid transparent; border-bottom: 25px solid transparent;
-            border-left: 20px solid var(--th-green);
-        }
-
-        /* 停車駅の○と所要時間、ナンバリング */
-        .st-markers {
-            display: flex; width: 100%;
-            justify-content: flex-start;
-            margin-bottom: 20px;
-        }
-        .marker-item {
-            width: 100px; display: flex; flex-direction: column; align-items: center;
-        }
-        .marker-circle {
-            width: 20px; height: 20px; background: var(--black); border-radius: 50%;
-            margin-bottom: 10px;
-        }
-        .time-text { font-size: 18px; color: var(--gray); font-weight: bold; margin-bottom: 5px;}
-        .num-box {
-            font-size: 14px; font-weight: bold; border: 2px solid var(--black); border-radius: 4px;
-            width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-        }
-
-        /* --- フッター (乗り換え案内テキスト) --- */
-        footer {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            height: 140px;
-            border-top: 2px solid #ddd;
-            display: flex; align-items: center; justify-content: flex-start;
-            padding: 0 40px;
-        }
-        .footer-transit {
-            font-size: 20px; color: var(--gray);
-            border-left: 10px solid var(--sub-blue);
-            padding-left: 15px;
-            margin-bottom: 20px;
-        }
-        .footer-note {
-            position: absolute; bottom: 10px; right: 40px;
-            font-size: 14px; color: #999;
-        }
-
-        /* --- 左側スクリーン (館浜ロゴ) --- */
+        /* --- 左側 (ロゴ) --- */
         #left-screen {
             position: absolute; left: 0; top: 0; bottom: 0;
-            width: 326px; /* 画像の比率 */
+            width: 300px;
             background-color: var(--screen-bg);
-            border-right: 10px solid #ccc;
+            border-right: 4px solid #ccc;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: var(--gray);
         }
-        #th-logo { font-size: 40px; font-weight: bold; color: var(--gray); border: 3px solid var(--gray); padding: 5px 10px;}
+        #th-logo { font-size: 50px; font-weight: bold; border: 4px solid var(--black); padding: 10px 20px; margin-bottom: 10px;}
 
-        /* --- 通信状態エリア --- */
-        #conn-stat-box {
-            position: absolute; left: 20px; bottom: 20px;
-            background: #fff; padding: 10px; border-radius: 8px;
-            border: 2px solid #eee; text-align: center;
-            font-size: 12px; color: #666; width: 280px;
+        /* --- メインエリア --- */
+        #main-screen { margin-left: 304px; position: relative; height: 100%; }
+
+        header {
+            height: 140px; border-bottom: 4px solid var(--black);
+            display: flex; align-items: center; padding: 0 30px; position: relative;
         }
-        #st-name-debug { display: none;} /* デバッグ用駅名 (画像のデザインを優先するため、本来のst-nameを隠す) */
+        .header-type { font-size: 40px; font-weight: bold; border: 4px solid var(--black); padding: 5px 20px; margin-right: 20px; }
+        .header-dest { font-size: 40px; font-weight: bold; margin-right: 20px; }
+        .header-line-name { font-size: 30px; color: var(--th-green); font-weight: bold; border-right: 2px solid #ccc; padding-right: 20px; }
+        
+        .header-st-group { margin-left: 40px; }
+        .header-tadaima { font-size: 20px; color: var(--gray); display: block; }
+        .header-st { font-size: 85px; font-weight: bold; line-height: 1; letter-spacing: 0.05em; }
 
+        .header-info-right { position: absolute; right: 30px; top: 20px; text-align: right; }
+        .header-clock { font-size: 35px; font-weight: bold; }
+        .header-gousha { font-size: 20px; color: var(--gray); }
+
+        /* --- 路線図 --- */
+        main { padding: 40px 40px; }
+        .st-list { display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px; }
+        .st-item { width: 40px; font-size: 22px; font-weight: bold; line-height: 1.1; text-align: center; writing-mode: vertical-rl; }
+
+        .line-graph {
+            width: 100%; height: 45px; background-color: #eee;
+            border-radius: 25px; position: relative; margin: 30px 0;
+        }
+        .line-bar {
+            position: absolute; left: 0; top: 0; bottom: 0; width: 10%; 
+            background-color: var(--th-green); border-radius: 25px 0 0 25px;
+        }
+
+        .st-markers { display: flex; justify-content: space-between; width: 100%; }
+        .marker-item { display: flex; flex-direction: column; align-items: center; width: 60px; }
+        .marker-circle { width: 18px; height: 18px; background: #000; border-radius: 50%; margin-bottom: 10px; }
+        .time-text { font-size: 20px; color: var(--gray); font-weight: bold; margin-bottom: 5px; }
+        .num-box {
+            font-size: 14px; font-weight: bold; border: 2px solid var(--black); border-radius: 4px;
+            width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+        }
+
+        footer {
+            position: absolute; bottom: 30px; left: 40px; right: 40px;
+            border-top: 2px solid #eee; padding-top: 15px; font-size: 18px; color: var(--gray);
+        }
+
+        /* --- QRコードオーバーレイ --- */
+        #qr-box {
+            position: absolute; right: 20px; bottom: 20px;
+            background: #fff; border: 2px solid #000; padding: 15px;
+            text-align: center; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
-<body onclick="enableAudio()"> <div class="display-container">
-        
-        <div id="left-screen">
-            <div id="th-logo">TH<br>館浜</div>
-            <p style="font-size:12px;">館浜電鉄</p>
+<body onclick="enableAudio()">
+
+    <div id="scale-wrapper">
+        <div class="display-container">
+            <div id="left-screen">
+                <div id="th-logo">TH<br>館浜</div>
+                <p style="font-weight:bold; color:#666;">館浜電鉄</p>
+            </div>
+
+            <div id="main-screen">
+                <header>
+                    <div class="header-type" id="display-type">普通</div>
+                    <div class="header-dest">新井川 ゆき</div>
+                    <div class="header-line-name">館濱線</div>
+                    <div class="header-st-group">
+                        <span class="header-tadaima">ただいま</span>
+                        <div class="header-st" id="st-name-main">館浜</div>
+                    </div>
+                    <div class="header-info-right">
+                        <div class="header-clock" id="clock">12:12</div>
+                        <div class="header-gousha">2 号車</div>
+                    </div>
+                </header>
+
+                <main>
+                    <div class="st-list">
+                        <div class="st-item">館浜</div>
+                        <div class="st-item">駒野</div>
+                        <div class="st-item">河原崎</div>
+                        <div class="st-item">海岸公園</div>
+                        <div class="st-item">虹ケ浜</div>
+                        <div class="st-item">津崎</div>
+                        <div class="st-item">浜園</div>
+                        <div class="st-item">羽衣橋</div>
+                        <div class="st-item">新井川</div>
+                    </div>
+                    <div class="line-graph">
+                        <div class="line-bar"></div>
+                    </div>
+                    <div class="st-markers">
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">●</div><div class="num-box">JO19</div></div>
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">6</div><div class="num-box">JO18</div></div>
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">10</div><div class="num-box">JO17</div></div>
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">13</div><div class="num-box">JO16</div></div>
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">17</div><div class="num-box">JO15</div></div>
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">20</div><div class="num-box">JO14</div></div>
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">25</div><div class="num-box">JO13</div></div>
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">28</div><div class="num-box">JO12</div></div>
+                        <div class="marker-item"><div class="marker-circle"></div><div class="time-text">32</div><div class="num-box">JO11</div></div>
+                    </div>
+                </main>
+
+                <footer>
+                    のりかえ、待合時間は含まれません。電車により多少時間が異なります。
+                </footer>
+            </div>
+
+            <div id="qr-box">
+                <div id="qrcode"></div>
+                <p style="font-size:12px; margin:10px 0 0 0; font-weight:bold;">スマホでスキャン</p>
+                <p id="peer-id-label" style="font-size:10px; color:#999;"></p>
+            </div>
         </div>
-
-        <div id="main-screen" style="margin-left: 336px; position: relative; height: 100%;">
-            
-            <header>
-                <div class="header-type" id="display-type">普通</div>
-                <div class="header-dest">新井川</div>
-                <div class="header-num">館濱線</div>
-                <div class="header-tadaima">ただいま</div>
-                <div class="header-st" id="st-name-main">館浜</div>
-                <div class="header-clock">12:12</div>
-                <div class="header-gousha">2<br>号車</div>
-            </header>
-
-            <main>
-                <div class="st-list">
-                    <div class="st-item"><div>館<br>濱</div></div>
-                    <div class="st-item"><div>駒<br>野</div></div>
-                    <div class="st-item"><div>河<br>原<br>崎</div></div>
-                    <div class="st-item"><div>海<br>岸<br>公<br>園</div></div>
-                    <div class="st-item"><div>虹<br>ケ<br>浜</div></div>
-                    <div class="st-item"><div>津<br>崎</div></div>
-                    <div class="st-item"><div>浜<br>園</div></div>
-                    <div class="st-item"><div>羽<br>衣<br>橋</div></div>
-                    <div class="st-item"><div>新<br>井<br>川</div></div>
-                </div>
-
-                <div class="line-graph">
-                    <div class="line-bar"></div>
-                </div>
-
-                <div class="st-markers">
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">●</div><div class="num-box">JO<br>19</div></div>
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">6</div><div class="num-box">JO<br>18</div></div>
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">10</div><div class="num-box">JO<br>17</div></div>
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">13</div><div class="num-box">JO<br>16</div></div>
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">17</div><div class="num-box">JO<br>15</div></div>
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">20</div><div class="num-box">JO<br>14</div></div>
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">25</div><div class="num-box">JO<br>13</div></div>
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">28</div><div class="num-box">JO<br>12</div></div>
-                    <div class="marker-item"><div class="marker-circle"></div><div class="time-text">32</div><div class="num-box">JO<br>11</div></div>
-                </div>
-            </main>
-
-            <footer>
-                <div class="footer- transit">
-                    のりかえのご案内、待合時間は含まれません。
-                </div>
-                <div class="footer-note">のりかえ、待合時間は含まれません。電車により多少時間が異なります。一部区間では時間を表示しません。</div>
-            </footer>
-        </div>
-
-        <div id="conn-stat-box">
-            <div id="conn-stat">OFFLINE</div>
-            <div id="qrcode" style="margin: 10px auto;"></div>
-            <p style="font-size:10px; margin:0;">スマホのカメラでスキャンして運転開始</p>
-        </div>
-
-        <div id="st-name-debug"></div>
-        <audio id="remote-audio" autoplay playsinline></audio>
-
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <audio id="remote-audio" autoplay playsinline></audio>
+
     <script>
-        // --- 1. システム: PeerJSによる接続IDの固定 ---
-        const MASTER_ID = "TATEHAMA-TRAIN-SYSTEM-2026"; // IDを固定化して接続を強固に
+        // --- 画面のスケーリング処理 ---
+        function setScale() {
+            const wrapper = document.getElementById('scale-wrapper');
+            const scale = Math.min(window.innerWidth / 1326, window.innerHeight / 746);
+            wrapper.style.transform = `scale(${scale})`;
+        }
+        window.addEventListener('resize', setScale);
+        setScale();
+
+        // --- 通信処理 ---
+        const MASTER_ID = "TH-SYSTEM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
         const peer = new Peer(MASTER_ID);
 
-        // --- 2. 案内表示の初期化とQRコード生成 ---
         peer.on('open', (id) => {
-            document.getElementById('conn-stat').innerText = "System ID: " + id;
+            document.getElementById('peer-id-label').innerText = "ID: " + id;
+            const targetUrl = window.location.href.replace('index.html', 'con.html') + "?id=" + id;
             
-            // 現在のURLから con.html へのフルパスを作成
-            const currentUrl = window.location.href.split('?')[0];
-            const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/'));
-            const targetUrl = `${baseUrl}/con.html?id=${id}`;
-
-            // QRコード描画
+            // QRコード生成
+            document.getElementById("qrcode").innerHTML = "";
             new QRCode(document.getElementById("qrcode"), {
                 text: targetUrl,
-                width: 140,
-                height: 140
+                width: 150,
+                height: 150
             });
         });
 
-        // --- 3. システム: スマホとのデータ接続 ---
         peer.on('connection', (conn) => {
-            // 接続されたらQRコードを隠す
-            document.getElementById('conn-stat-box').style.display = 'none';
-            document.getElementById('conn-stat').innerText = "CONNECTED";
-            document.getElementById('conn-stat').style.color = "#28a745";
-
+            document.getElementById('qr-box').style.display = 'none';
             conn.on('data', (data) => {
-                console.log("Recv:", data);
-                
-                // 駅名更新
-                if(data.type === 'station') {
-                    document.getElementById('st-name-main').innerText = data.val;
-                }
-                
-                // 種別更新 (追加機能)
-                if(data.type === 'type') {
-                    document.getElementById('display-type').innerText = data.val;
-                }
+                if(data.type === 'station') document.getElementById('st-name-main').innerText = data.val;
+                if(data.type === 'type') document.getElementById('display-type').innerText = data.val;
             });
         });
 
-        // --- 4. システム: 音声通話（マイク放送）の受信 ---
         peer.on('call', (call) => {
-            call.answer(); 
-            call.on('stream', (remoteStream) => {
+            call.answer();
+            call.on('stream', (stream) => {
                 const audio = document.getElementById('remote-audio');
-                audio.srcObject = remoteStream;
+                audio.srcObject = stream;
                 audio.play();
             });
         });
 
-        // --- 5. UI: 音声再生の許可 (オートプレイ対策) ---
-        function enableAudio() {
-            const audio = document.getElementById('remote-audio');
-            audio.play().then(() => {
-                audio.pause();
-                console.log("Audio Enabled");
-            }).catch(e => console.log("Waiting for user interaction"));
-        }
+        function enableAudio() { document.getElementById('remote-audio').play().then(()=>document.getElementById('remote-audio').pause()); }
 
-        // UI: 時計の更新
         setInterval(() => {
             const now = new Date();
-            document.querySelector('.header-clock').innerText = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').innerText = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
         }, 1000);
-
-    </style>
+    </script>
 </body>
 </html>
