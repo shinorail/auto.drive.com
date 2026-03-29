@@ -2,64 +2,91 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>館浜電鉄 案内表示 (PC)</title>
+    <title>館浜電鉄 総合表示システム</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --th-green: #2ecc71; }
-        body { background: #000; margin: 0; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #scaler { width: 1280px; height: 720px; background: #fff; color: #000; position: relative; transform-origin: center; border: 4px solid #000; }
-        #qr-overlay { position: absolute; inset: 0; background: #fff; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        header { height: 150px; border-bottom: 5px solid #000; display: flex; align-items: center; padding: 0 40px; }
-        .type-box { font-size: 50px; font-weight: bold; border: 5px solid #000; padding: 10px 30px; margin-right: 30px; }
-        .st-now { font-size: 100px; font-weight: bold; flex-grow: 1; text-align: right; }
-        main { padding: 60px; }
-        .next-label { font-size: 40px; font-weight: bold; color: #666; }
-        .next-st { font-size: 180px; font-weight: bold; text-align: center; margin-top: 20px; }
+        body { background: #1a1a1a; margin: 0; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #scaler { width: 1280px; height: 800px; display: flex; flex-direction: column; gap: 20px; transform-origin: center; }
+        .external-maku { background: #000; border: 8px solid #444; border-radius: 10px; height: 200px; display: flex; align-items: center; padding: 0 40px; overflow: hidden; }
+        .maku-box { height: 120px; overflow: hidden; position: relative; border: 3px solid #fff; margin-right: 30px; min-width: 220px; text-align: center; }
+        .dest-box { height: 120px; overflow: hidden; position: relative; flex-grow: 1; }
+        .rolling-text { font-size: 80px; font-weight: bold; line-height: 120px; color: #fff; transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
+        .blur { filter: blur(2px); opacity: 0.8; }
+        .internal-lcd { background: #fff; color: #000; flex-grow: 1; border: 5px solid #000; position: relative; padding: 40px; }
+        header { border-bottom: 5px solid #000; display: flex; align-items: center; padding-bottom: 20px; margin-bottom: 30px; }
+        .lcd-type { font-size: 40px; font-weight: bold; border: 4px solid #000; padding: 5px 20px; margin-right: 20px; }
+        .lcd-now-st { font-size: 80px; font-weight: bold; flex-grow: 1; text-align: right; }
+        .next-st { font-size: 150px; font-weight: bold; text-align: center; margin-top: 20px; }
+        #qr-overlay { position: absolute; inset: 0; background: #fff; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #000; }
     </style>
 </head>
 <body>
     <div id="scaler">
-        <div id="qr-overlay">
-            <h1 id="status-text">通信サーバーに接続中...</h1>
-            <div id="qrcode"></div>
+        <div class="external-maku">
+            <div class="maku-box"><div id="ext-type" class="rolling-text">---</div></div>
+            <div class="dest-box"><div id="ext-dest" class="rolling-text">---</div></div>
         </div>
-        <header>
-            <div class="type-box" id="disp-type">普通</div>
-            <div class="st-now" id="disp-now">館浜</div>
-        </header>
-        <main>
-            <div class="next-label">次は Next</div>
-            <div class="next-st" id="disp-next">---</div>
-        </main>
+        <div class="internal-lcd">
+            <div id="qr-overlay">
+                <h1>操作用QRコード</h1>
+                <div id="qrcode"></div>
+                <p>サーバー接続中...</p>
+            </div>
+            <header>
+                <div class="lcd-type" id="in-type">---</div>
+                <div class="lcd-now-st" id="in-now">---</div>
+            </header>
+            <main>
+                <div style="font-size:35px; color:#666; font-weight:bold;">次は Next</div>
+                <div class="next-st" id="in-next">---</div>
+            </main>
+        </div>
     </div>
     <audio id="remote-audio" autoplay playsinline></audio>
     <script>
         function setScale() {
-            const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+            const s = Math.min(window.innerWidth / 1320, window.innerHeight / 850);
             document.getElementById('scaler').style.transform = `scale(${s})`;
         }
         window.onresize = setScale; setScale();
 
-        // 毎回違うIDを作ることで接続を高速化
         const peer = new Peer(); 
-
         peer.on('open', (id) => {
-            document.getElementById('status-text').innerText = "スマホでスキャンしてください";
             const conUrl = window.location.href.replace('index.html', 'con.html') + "?id=" + id;
-            new QRCode(document.getElementById("qrcode"), { text: conUrl, width: 300, height: 300 });
+            new QRCode(document.getElementById("qrcode"), { text: conUrl, width: 250, height: 250 });
         });
 
         peer.on('connection', (conn) => {
             document.getElementById('qr-overlay').style.display = 'none';
             conn.on('data', (data) => {
-                if(data.type === 'station') {
-                    document.getElementById('disp-now').innerText = data.now;
-                    document.getElementById('disp-next').innerText = data.next;
+                if(data.type === 'update') {
+                    animateMaku('ext-type', data.trainType);
+                    animateMaku('ext-dest', data.dest);
+                    document.getElementById('in-type').innerText = data.trainType;
+                    document.getElementById('in-now').innerText = data.now;
+                    document.getElementById('in-next').innerText = data.next;
                 }
-                if(data.type === 'type') document.getElementById('disp-type').innerText = data.val;
             });
         });
+
+        function animateMaku(id, text) {
+            const el = document.getElementById(id);
+            if(el.innerText === text) return;
+            el.classList.add('blur');
+            el.style.transform = 'translateY(-100%)';
+            setTimeout(() => {
+                el.style.transition = 'none';
+                el.style.transform = 'translateY(100%)';
+                el.innerText = text;
+                setTimeout(() => {
+                    el.style.transition = '';
+                    el.style.transform = 'translateY(0)';
+                    el.classList.remove('blur');
+                }, 50);
+            }, 300);
+        }
 
         peer.on('call', (call) => {
             call.answer();
