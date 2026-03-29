@@ -3,39 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>操作パネル</title>
+    <title>操作パネル+</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 180px; }
-        .label { font-size: 12px; color: #aaa; margin: 15px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .dest-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 160px; overflow-y: auto; background: #222; padding: 8px; border-radius: 6px; }
-        button { background: #444; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 180px; }
+        .label { font-size: 11px; color: #aaa; margin: 10px 0 5px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        button { background: #333; border: none; color: #fff; padding: 10px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; }
         button.active { background: #ffcc00; color: #000; }
-        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 18px; display: block; color: #fff; }
-        .stop { border-left-color: #2ecc71; }
-        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; }
-        #mic-btn { width: 90%; height: 75px; display: block; margin: 0 auto; background: #ff3b30; color: #fff; font-size: 20px; font-weight: bold; border-radius: 12px; touch-action: none; }
-        #v-meter-wrap { width: 90%; height: 8px; background: #000; margin: 0 auto 10px; border-radius: 4px; overflow: hidden; }
+        .st-btn { width: 100%; text-align: left; padding: 14px; margin-bottom: 6px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 16px; color: #fff; }
+        
+        /* ドア選択用 */
+        .door-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+        .door-btn { height: 50px; font-size: 14px; background: #444; }
+        .door-btn.active { background: #2ecc71; color: #fff; }
+
+        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; border-top: 2px solid #444; }
+        #mic-btn { width: 90%; height: 70px; display: block; margin: 0 auto; background: #ff3b30; color: #fff; font-size: 18px; font-weight: bold; border-radius: 12px; touch-action: none; }
+        #v-meter-wrap { width: 90%; height: 6px; background: #000; margin: 0 auto 8px; border-radius: 3px; overflow: hidden; }
         #v-meter-bar { width: 0%; height: 100%; background: #2ecc71; }
     </style>
 </head>
 <body onload="init()">
-    <div id="status" style="text-align:center; font-size:14px; padding:10px; background:#333;">接続を待っています...</div>
+    <div id="status" style="text-align:center; font-size:12px; padding:5px; background:#333;">接続待機中</div>
 
-    <div class="label">運行方面</div>
+    <div class="label">1. 次の駅の開くドア</div>
+    <div class="door-grid">
+        <button id="d-left" class="door-btn" onclick="setDoor('left')">◀ 左側</button>
+        <button id="d-none" class="door-btn active" onclick="setDoor('none')">なし</button>
+        <button id="d-right" class="door-btn" onclick="setDoor('right')">右側 ▶</button>
+    </div>
+
+    <div class="label">2. 運行方面</div>
     <div class="grid" style="grid-template-columns: 1fr 1fr;">
         <button id="b-katihama" onclick="setDirection('館浜')">館浜 方面</button>
         <button id="b-akayama" onclick="setDirection('赤山町')">赤山町 方面</button>
     </div>
 
-    <div class="label">種別</div>
-    <div id="type-grid" class="grid"></div>
+    <div class="label">3. 種別 / 4. 行先</div>
+    <div id="type-grid" class="grid" style="margin-bottom:5px;"></div>
+    <div id="dest-grid" class="grid" style="grid-template-columns: repeat(4, 1fr); max-height:80px; overflow-y:auto;"></div>
 
-    <div class="label">終着駅 (行先)</div>
-    <div id="dest-grid" class="dest-grid"></div>
-
-    <div class="label">駅選択</div>
+    <div class="label">5. 駅選択 (送信)</div>
     <div id="station-list"></div>
 
     <div id="mic-container">
@@ -61,7 +70,7 @@
         };
 
         let conn, peer, localStream, audioContext, analyser, dataArray;
-        let selType = "普通", selDest = "館浜", selBound = "館浜";
+        let selType = "普通", selDest = "館浜", selBound = "館浜", selDoor = "none";
 
         function init() {
             const tg = document.getElementById('type-grid');
@@ -74,13 +83,13 @@
                 const b = document.createElement('button'); b.innerText = st.name;
                 b.onclick = () => { selDest = st.name; updateUI(); }; dg.appendChild(b);
             });
-            
             const mb = document.getElementById('mic-btn');
             mb.onpointerdown = (e) => { e.preventDefault(); micOn(); };
             mb.onpointerup = mb.onpointerleave = micOff;
             connect();
         }
 
+        function setDoor(dir) { selDoor = dir; updateUI(); }
         function setDirection(dir) { selBound = dir; updateUI(); }
 
         function connect() {
@@ -88,10 +97,7 @@
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id);
-                conn.on('open', () => { 
-                    document.getElementById('status').innerText = "● PCに接続しました";
-                    document.getElementById('status').style.background = "#2ecc71";
-                });
+                conn.on('open', () => { document.getElementById('status').innerText = "CONNECTED"; document.getElementById('status').style.background = "#2ecc71"; });
             });
             updateUI();
         }
@@ -99,6 +105,9 @@
         function updateUI() {
             document.getElementById('b-katihama').className = selBound === '館浜' ? 'active' : '';
             document.getElementById('b-akayama').className = selBound === '赤山町' ? 'active' : '';
+            document.getElementById('d-left').className = `door-btn ${selDoor === 'left' ? 'active' : ''}`;
+            document.getElementById('d-right').className = `door-btn ${selDoor === 'right' ? 'active' : ''}`;
+            document.getElementById('d-none').className = `door-btn ${selDoor === 'none' ? 'active' : ''}`;
             document.querySelectorAll('#type-grid button').forEach(b => b.className = b.innerText === selType ? 'active' : '');
             document.querySelectorAll('#dest-grid button').forEach(b => b.className = b.innerText === selDest ? 'active' : '');
 
@@ -113,7 +122,7 @@
                 if(foundDest) return;
                 if(st.stop[tIdx] === 1) {
                     const b = document.createElement('button');
-                    b.className = "st-btn stop";
+                    b.className = "st-btn";
                     b.innerText = st.name;
                     b.onclick = () => {
                         let next = "終点";
@@ -122,7 +131,7 @@
                             if(sts[j].name === selDest) { next = selDest; break; }
                         }
                         if(st.name === selDest) next = "終点";
-                        conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest, bound: selBound });
+                        conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest, bound: selBound, door: selDoor });
                     };
                     list.appendChild(b);
                 }
@@ -147,7 +156,7 @@
                     animationId = requestAnimationFrame(loop);
                 }
                 loop();
-            } catch(e) { alert("マイク許可が必要です"); }
+            } catch(e) {}
         }
         function micOff() {
             if(localStream) localStream.getTracks().forEach(t => t.stop());
