@@ -3,53 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>操作パネル+</title>
+    <title>館浜電鉄 操作パネル</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 180px; }
-        .label { font-size: 11px; color: #aaa; margin: 10px 0 5px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        button { background: #333; border: none; color: #fff; padding: 10px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; }
-        button.active { background: #ffcc00; color: #000; }
-        .st-btn { width: 100%; text-align: left; padding: 14px; margin-bottom: 6px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 16px; color: #fff; }
+        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 220px; user-select: none; }
+        .label { font-size: 11px; color: #aaa; margin: 12px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; text-transform: uppercase; }
         
-        /* ドア選択用 */
-        .door-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
-        .door-btn { height: 50px; font-size: 14px; background: #444; }
-        .door-btn.active { background: #2ecc71; color: #fff; }
+        /* ドアカットスイッチ */
+        .cut-btn { width: 100%; height: 50px; background: #333; border: 2px solid #555; color: #fff; border-radius: 8px; font-weight: bold; font-size: 16px; margin-bottom: 10px; }
+        .cut-btn.active { background: #ff3b30; border-color: #ff3b30; }
 
-        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; border-top: 2px solid #444; }
-        #mic-btn { width: 90%; height: 70px; display: block; margin: 0 auto; background: #ff3b30; color: #fff; font-size: 18px; font-weight: bold; border-radius: 12px; touch-action: none; }
-        #v-meter-wrap { width: 90%; height: 6px; background: #000; margin: 0 auto 8px; border-radius: 3px; overflow: hidden; }
-        #v-meter-bar { width: 0%; height: 100%; background: #2ecc71; }
+        /* ドア操作 */
+        .door-ctrl { background: #222; padding: 10px; border-radius: 12px; border: 1px solid #444; margin-bottom: 15px; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .door-btn { height: 65px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; color: #fff; }
+        .open-btn { background: #e67e22; }
+        .close-btn { background: #2980b9; }
+
+        /* 設定系 */
+        .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .dg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 100px; overflow-y: auto; background: #1a1a1a; padding: 8px; border-radius: 6px; }
+        button { background: #444; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; }
+        button.active { background: #ffcc00; color: #000; }
+
+        /* 駅名リスト */
+        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 18px; display: block; color: #fff; }
+        
+        /* マイク放送 */
+        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; z-index: 100; }
+        #mic-btn { width: 90%; height: 75px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; border-radius: 15px; touch-action: none; }
+        #v-meter { height: 6px; background: #000; width: 90%; margin: 0 auto 10px; border-radius: 3px; overflow: hidden; }
+        #v-bar { width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s; }
     </style>
 </head>
 <body onload="init()">
-    <div id="status" style="text-align:center; font-size:12px; padding:5px; background:#333;">接続待機中</div>
+    <div id="status" style="text-align:center; font-size:12px; padding:6px; background:#333;">接続待機中...</div>
 
-    <div class="label">1. 次の駅の開くドア</div>
-    <div class="door-grid">
-        <button id="d-left" class="door-btn" onclick="setDoor('left')">◀ 左側</button>
-        <button id="d-none" class="door-btn active" onclick="setDoor('none')">なし</button>
-        <button id="d-right" class="door-btn" onclick="setDoor('right')">右側 ▶</button>
+    <div class="label">1. ドアカット (3/4 締切)</div>
+    <button id="cut-switch" class="cut-btn" onclick="toggleCut()">3/4 締切：OFF</button>
+
+    <div class="label">2. ドア開閉 (リアルタイム操作)</div>
+    <div class="door-ctrl">
+        <div class="grid2" style="margin-bottom:10px;">
+            <button class="door-btn open-btn" onclick="sendDoor('open', 'left')">◀ 左ドア開</button>
+            <button class="door-btn open-btn" onclick="sendDoor('open', 'right')">右ドア開 ▶</button>
+        </div>
+        <button class="door-btn close-btn" style="width:100%" onclick="sendDoor('close')">■ ドア全閉 (発車)</button>
     </div>
 
-    <div class="label">2. 運行方面</div>
-    <div class="grid" style="grid-template-columns: 1fr 1fr;">
-        <button id="b-katihama" onclick="setDirection('館浜')">館浜 方面</button>
-        <button id="b-akayama" onclick="setDirection('赤山町')">赤山町 方面</button>
+    <div class="label">3. 運行設定 (方面・種別・行先)</div>
+    <div class="grid2" style="margin-bottom:8px;">
+        <button id="b-katihama" onclick="setDir('館浜')">館浜 方面</button>
+        <button id="b-akayama" onclick="setDir('赤山町')">赤山町 方面</button>
     </div>
+    <div id="type-grid" class="grid3" style="margin-bottom:8px;"></div>
+    <div id="dest-grid" class="dg"></div>
 
-    <div class="label">3. 種別 / 4. 行先</div>
-    <div id="type-grid" class="grid" style="margin-bottom:5px;"></div>
-    <div id="dest-grid" class="grid" style="grid-template-columns: repeat(4, 1fr); max-height:80px; overflow-y:auto;"></div>
-
-    <div class="label">5. 駅選択 (送信)</div>
+    <div class="label">4. 次の駅を選択 (放送連動)</div>
     <div id="station-list"></div>
 
     <div id="mic-container">
-        <div id="v-meter-wrap"><div id="v-meter-bar"></div></div>
-        <button id="mic-btn">🎤 放送 (長押し)</button>
+        <div id="v-meter"><div id="v-bar"></div></div>
+        <button id="mic-btn">🎤 マイク放送 (長押し)</button>
     </div>
 
     <script>
@@ -69,8 +84,8 @@
             ]
         };
 
-        let conn, peer, localStream, audioContext, analyser, dataArray;
-        let selType = "普通", selDest = "館浜", selBound = "館浜", selDoor = "none";
+        let conn, peer, localStream, audioContext, analyser, dataArray, animationId, isCut = false;
+        let selType = "普通", selDest = "館浜", selBound = "館浜";
 
         function init() {
             const tg = document.getElementById('type-grid');
@@ -83,21 +98,35 @@
                 const b = document.createElement('button'); b.innerText = st.name;
                 b.onclick = () => { selDest = st.name; updateUI(); }; dg.appendChild(b);
             });
+            
             const mb = document.getElementById('mic-btn');
             mb.onpointerdown = (e) => { e.preventDefault(); micOn(); };
             mb.onpointerup = mb.onpointerleave = micOff;
             connect();
         }
 
-        function setDoor(dir) { selDoor = dir; updateUI(); }
-        function setDirection(dir) { selBound = dir; updateUI(); }
+        function toggleCut() {
+            isCut = !isCut;
+            document.getElementById('cut-switch').innerText = isCut ? "3/4 締切：ON" : "3/4 締切：OFF";
+            document.getElementById('cut-switch').className = `cut-btn ${isCut?'active':''}`;
+            if(conn) conn.send({ type: 'cut', active: isCut });
+        }
+
+        function sendDoor(status, side='none') {
+            if(conn) conn.send({ type: 'door', status: status, side: side });
+        }
+
+        function setDir(dir) { selBound = dir; updateUI(); }
 
         function connect() {
             const id = new URLSearchParams(window.location.search).get('id');
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id);
-                conn.on('open', () => { document.getElementById('status').innerText = "CONNECTED"; document.getElementById('status').style.background = "#2ecc71"; });
+                conn.on('open', () => { 
+                    document.getElementById('status').innerText = "ONLINE (PC接続済み)";
+                    document.getElementById('status').style.background = "#2ecc71";
+                });
             });
             updateUI();
         }
@@ -105,9 +134,6 @@
         function updateUI() {
             document.getElementById('b-katihama').className = selBound === '館浜' ? 'active' : '';
             document.getElementById('b-akayama').className = selBound === '赤山町' ? 'active' : '';
-            document.getElementById('d-left').className = `door-btn ${selDoor === 'left' ? 'active' : ''}`;
-            document.getElementById('d-right').className = `door-btn ${selDoor === 'right' ? 'active' : ''}`;
-            document.getElementById('d-none').className = `door-btn ${selDoor === 'none' ? 'active' : ''}`;
             document.querySelectorAll('#type-grid button').forEach(b => b.className = b.innerText === selType ? 'active' : '');
             document.querySelectorAll('#dest-grid button').forEach(b => b.className = b.innerText === selDest ? 'active' : '');
 
@@ -131,7 +157,7 @@
                             if(sts[j].name === selDest) { next = selDest; break; }
                         }
                         if(st.name === selDest) next = "終点";
-                        conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest, bound: selBound, door: selDoor });
+                        if(conn) conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest, bound: selBound });
                     };
                     list.appendChild(b);
                 }
@@ -145,24 +171,24 @@
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 peer.call(id, localStream);
                 audioContext = new AudioContext();
-                const source = audioContext.createMediaStreamSource(localStream);
+                const src = audioContext.createMediaStreamSource(localStream);
                 analyser = audioContext.createAnalyser();
-                source.connect(analyser);
+                src.connect(analyser);
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
-                function loop() {
+                const loop = () => {
                     analyser.getByteFrequencyData(dataArray);
-                    let s = 0; for(let v of dataArray) s += v;
-                    document.getElementById('v-meter-bar').style.width = (s/dataArray.length)*2 + "%";
+                    let sum = 0; for(let v of dataArray) sum += v;
+                    document.getElementById('v-bar').style.width = (sum/dataArray.length)*2.5 + "%";
                     animationId = requestAnimationFrame(loop);
-                }
+                };
                 loop();
-            } catch(e) {}
+            } catch(e) { alert("マイクを許可してください"); }
         }
         function micOff() {
             if(localStream) localStream.getTracks().forEach(t => t.stop());
             if(audioContext) audioContext.close();
             cancelAnimationFrame(animationId);
-            document.getElementById('v-meter-bar').style.width = "0%";
+            document.getElementById('v-bar').style.width = "0%";
         }
     </script>
 </body>
