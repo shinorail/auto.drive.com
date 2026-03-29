@@ -2,55 +2,94 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>館浜電鉄 運行表示システム (PC用)</title>
+    <title>館浜電鉄 案内表示システム</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { background: #000; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        #scaler { width: 1280px; height: 720px; background: #000; position: relative; color: white; transform-origin: center; }
-        #qr-overlay { position: absolute; inset: 0; background: #fff; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #000; }
-        .container { padding: 80px 60px; }
-        .label { font-size: 80px; font-weight: bold; color: #ccc; }
-        .station { font-size: 200px; font-weight: bold; text-align: center; width: 100%; display: block; margin-top: 40px; }
-        .line { position: absolute; bottom: 80px; left: 5%; width: 90%; height: 12px; background: #ffcc00; }
+        :root { --th-green: #2ecc71; --black: #000; }
+        body { background: #333; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        #scaler { width: 1326px; height: 746px; background: #fff; position: relative; border: 5px solid #000; transform-origin: center; }
+        
+        /* QR待機画面 */
+        #setup-overlay { position: absolute; inset: 0; background: #fff; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* ヘッダー */
+        header { height: 140px; border-bottom: 4px solid #000; display: flex; align-items: center; padding: 0 30px; }
+        .type-box { font-size: 40px; font-weight: bold; border: 4px solid #000; padding: 5px 20px; margin-right: 20px; }
+        .dest-text { font-size: 45px; font-weight: bold; flex-grow: 1; }
+        .line-name { font-size: 30px; color: var(--th-green); font-weight: bold; border-left: 2px solid #ccc; padding-left: 20px; }
+        .st-now-group { margin-left: 40px; text-align: right; }
+        .st-now { font-size: 85px; font-weight: bold; line-height: 1; }
+
+        /* メイン内容 */
+        main { padding: 40px; }
+        .next-label { font-size: 30px; font-weight: bold; color: #666; }
+        .next-st { font-size: 120px; font-weight: bold; margin-top: 10px; }
+        .progress-bg { width: 100%; height: 45px; background: #eee; border-radius: 25px; margin-top: 50px; overflow: hidden; }
+        .progress-bar { width: 20%; height: 100%; background: var(--th-green); }
     </style>
 </head>
 <body>
     <div id="scaler">
-        <div id="qr-overlay">
-            <h2 id="msg">スマホでQRコードをスキャンしてください</h2>
+        <div id="setup-overlay">
+            <h1>操作用QRコード</h1>
             <div id="qrcode"></div>
-            <p id="peer-id-log">通信準備中...</p>
+            <p id="peer-id-display">通信準備中...</p>
         </div>
-        <div class="container">
-            <div class="label">次 は</div>
-            <div class="station" id="disp-next">館浜</div>
-            <div class="line"></div>
-        </div>
+
+        <header>
+            <div class="type-box" id="disp-type">普通</div>
+            <div class="dest-text" id="disp-dest">館浜 ゆき</div>
+            <div class="line-name">館濱線</div>
+            <div class="st-now-group">
+                <span style="font-size:20px;color:#666">ただいま</span>
+                <div class="st-now" id="disp-now">新井川</div>
+            </div>
+        </header>
+
+        <main>
+            <div class="next-label">次は Next</div>
+            <div class="next-st" id="disp-next">羽衣橋</div>
+            <div class="progress-bg"><div class="progress-bar"></div></div>
+        </main>
     </div>
+
+    <audio id="remote-audio" autoplay playsinline></audio>
+
     <script>
         function setScale() {
-            const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+            const scale = Math.min(window.innerWidth / 1326, window.innerHeight / 746);
             document.getElementById('scaler').style.transform = `scale(${scale})`;
         }
         window.onresize = setScale; setScale();
 
-        // PC側のIDを固定
-        const peer = new Peer("TATEHAMA-PC-SIDE");
+        const peer = new Peer("TATEHAMA-PC-MAIN");
 
         peer.on('open', (id) => {
-            // con.html へのパスを確実に作成（現在のフォルダ内の con.html を指定）
-            const currentPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
-            const conUrl = window.location.origin + currentPath + "/con.html?id=" + id;
-            
+            const currentURL = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+            const conUrl = currentURL + "/con.html?id=" + id;
             new QRCode(document.getElementById("qrcode"), { text: conUrl, width: 300, height: 300 });
-            document.getElementById('peer-id-log').innerText = "接続待機中: " + id;
+            document.getElementById('peer-id-display').innerText = "ID: " + id + " (接続待機中)";
         });
 
         peer.on('connection', (conn) => {
-            document.getElementById('qr-overlay').style.display = 'none';
+            document.getElementById('setup-overlay').style.display = 'none';
             conn.on('data', (data) => {
-                if(data.type === 'next') document.getElementById('disp-next').innerText = data.val;
+                if(data.type === 'station') {
+                    document.getElementById('disp-now').innerText = data.now;
+                    document.getElementById('disp-next').innerText = data.next;
+                }
+                if(data.type === 'type') document.getElementById('disp-type').innerText = data.val;
+                if(data.type === 'dest') document.getElementById('disp-dest').innerText = data.val + " ゆき";
+            });
+        });
+
+        peer.on('call', (call) => {
+            call.answer();
+            call.on('stream', (stream) => {
+                const audio = document.getElementById('remote-audio');
+                audio.srcObject = stream;
+                audio.play();
             });
         });
     </script>
