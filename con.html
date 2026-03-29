@@ -6,48 +6,52 @@
     <title>操作盤</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 140px; user-select: none; }
-        .label { font-size: 12px; color: #888; margin: 10px 0 5px; }
+        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 150px; user-select: none; }
+        .label { font-size: 11px; color: #888; margin: 10px 0 4px; text-transform: uppercase; }
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        button { background: #333; border: none; color: #fff; padding: 10px 5px; border-radius: 6px; font-weight: bold; }
+        button { background: #333; border: none; color: #fff; padding: 12px 4px; border-radius: 6px; font-weight: bold; font-size: 13px; }
         button.active { background: #ffcc00; color: #000; }
-        .st-btn { width: 100%; text-align: left; padding: 15px; margin-bottom: 5px; background: #222; border-left: 8px solid #444; border-radius: 4px; font-size: 16px; }
-        .stop { border-left-color: #2ecc71; }
+        .st-btn { width: 100%; text-align: left; padding: 16px; margin-bottom: 6px; background: #222; border-left: 8px solid #444; border-radius: 4px; font-size: 16px; display: block; }
+        .stop { border-left-color: #2ecc71; opacity: 1; }
         .pass { border-left-color: #555; opacity: 0.2; pointer-events: none; }
-        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; border-top: 1px solid #444; }
-        #mic-btn { width: 90%; height: 60px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 18px; font-weight: bold; border-radius: 10px; }
-        #v-meter-wrap { width: 90%; height: 6px; background: #000; margin: 5px auto; border-radius: 3px; overflow: hidden; }
-        #v-meter-bar { width: 0%; height: 100%; background: #2ecc71; }
+        
+        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; border-top: 1px solid #444; z-index: 100; }
+        #mic-btn { width: 90%; height: 70px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 18px; font-weight: bold; border-radius: 10px; }
+        #mic-btn:active { background: #fff; color: #ff3b30; }
+        #v-meter-wrap { width: 90%; height: 6px; background: #000; margin: 0 auto 8px; border-radius: 3px; overflow: hidden; }
+        #v-meter-bar { width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s; }
     </style>
 </head>
 <body onload="init()">
     <div id="status" style="text-align:center; font-size:11px; padding:5px; color:#aaa;">接続待機中</div>
 
-    <div class="label">運行方面</div>
+    <div class="label">1. 運行方面 (駅リストの並び替え)</div>
     <div class="grid" style="grid-template-columns: 1fr 1fr;">
         <button id="b-katihama" onclick="setDirection('館浜')">館浜 方面</button>
         <button id="b-akayama" onclick="setDirection('赤山町')">赤山町 方面</button>
     </div>
 
-    <div class="label">種別 / 行先</div>
-    <div id="type-grid" class="grid" style="margin-bottom:8px;"></div>
+    <div class="label">2. 種別</div>
+    <div id="type-grid" class="grid"></div>
+
+    <div class="label">3. 終着駅 (行先)</div>
     <div id="dest-grid" class="grid"></div>
 
-    <div class="label">駅選択</div>
+    <div class="label">4. 現在駅を選択 (PCへ送信)</div>
     <div id="station-list"></div>
 
     <div id="mic-container">
         <div id="v-meter-wrap"><div id="v-meter-bar"></div></div>
-        <button id="mic-btn">🎤 放送ボタン (長押し)</button>
+        <button id="mic-btn">🎤 放送ボタン (長押し中のみ送信)</button>
     </div>
 
     <script>
+        // 路線データ設定
         const config = {
             types: ["普通", "準急", "急行", "快急", "特急"],
             dests: ["館浜", "新井川", "赤山町"],
             stations: [
-                // isTerminal: true なら到着時に「終点」と表示
-                { name: "赤山町", stop: [1,1,1,1,1], isTerminal: false }, // 延伸予定なのでfalse
+                { name: "赤山町", stop: [1,1,1,1,1], isTerminal: false }, 
                 { name: "西赤山", stop: [1,1,1,0,0], isTerminal: false },
                 { name: "奥峯口", stop: [1,1,1,0,0], isTerminal: false },
                 { name: "日野森", stop: [1,1,1,1,0], isTerminal: false },
@@ -57,7 +61,7 @@
                 { name: "大道寺", stop: [1,1,1,1,1], isTerminal: false },
                 { name: "江ノ原", stop: [1,1,1,0,0], isTerminal: false },
                 { name: "新野崎", stop: [1,1,1,1,0], isTerminal: false },
-                { name: "新井川", stop: [1,0,0,0,0], isTerminal: false },
+                { name: "新井川", stop: [1,1,1,1,1], isTerminal: true }, // 途中終着駅
                 { name: "羽衣橋", stop: [1,0,0,0,0], isTerminal: false },
                 { name: "浜園",   stop: [1,1,0,0,0], isTerminal: false },
                 { name: "津崎",   stop: [1,0,0,0,0], isTerminal: false },
@@ -65,7 +69,7 @@
                 { name: "海岸公園", stop: [1,0,0,0,0], isTerminal: false },
                 { name: "河原崎", stop: [1,0,0,0,0], isTerminal: false },
                 { name: "駒野",   stop: [1,1,0,0,0], isTerminal: false },
-                { name: "館浜",   stop: [1,1,1,1,1], isTerminal: true }  // ここは終点
+                { name: "館浜",   stop: [1,1,1,1,1], isTerminal: true }  // 路線端の終点
             ]
         };
 
@@ -98,7 +102,7 @@
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id, { reliable: true });
-                conn.on('open', () => { document.getElementById('status').innerText = "● PC接続完了"; });
+                conn.on('open', () => { document.getElementById('status').innerText = "● PCに接続しました"; });
             });
             updateUI();
         }
@@ -111,6 +115,8 @@
 
             const list = document.getElementById('station-list'); list.innerHTML = '';
             const typeIdx = config.types.indexOf(selType);
+            
+            // 方面によってリストを並び替え
             let displayStations = [...config.stations];
             if(selBound === "赤山町") displayStations.reverse();
 
@@ -119,18 +125,30 @@
                 const b = document.createElement('button');
                 b.className = `st-btn ${isStop ? 'stop' : 'pass'}`;
                 b.innerText = st.name;
-                if(isStop) {
+                
+                // 今回選択した「行先（selDest）」より先にある駅は無効化する処理
+                let destReached = false;
+                for(let k=0; k < i; k++) {
+                    if(displayStations[k].name === selDest) destReached = true;
+                }
+                if(destReached) b.style.display = 'none';
+
+                if(isStop && !destReached) {
                     b.onclick = () => {
                         let next = "";
-                        // 次の停車駅を探す
-                        for (let j = i + 1; j < displayStations.length; j++) {
-                            if (displayStations[j].stop[typeIdx] === 1) {
-                                next = displayStations[j].name; break;
+                        // 現在の行先（selDest）がこの駅なら終点
+                        if (st.name === selDest) {
+                            next = "終点";
+                        } else {
+                            // 次の停車駅を、行先までの範囲で探す
+                            for (let j = i + 1; j < displayStations.length; j++) {
+                                if (displayStations[j].stop[typeIdx] === 1) {
+                                    next = displayStations[j].name;
+                                    break;
+                                }
+                                if (displayStations[j].name === selDest) break;
                             }
-                        }
-                        // 次がない場合、終点フラグを確認
-                        if (!next) {
-                            next = st.isTerminal ? "終点" : "---";
+                            if (!next) next = "終点";
                         }
                         if(conn) conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest, bound: selBound });
                     };
