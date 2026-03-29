@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 コンソール V6.1</title>
+    <title>館浜電鉄 統合コンソール V7</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 240px; user-select: none; }
@@ -15,7 +15,7 @@
         .open-btn { background: #e67e22; height: 60px; font-size: 15px; }
         .close-btn { background: #2980b9; height: 60px; font-size: 15px; }
         .st-btn { width: 100%; text-align: left; padding: 16px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 17px; color: #fff; }
-        .ticker-btn { background: #444; font-size: 11px; height: 40px; }
+        .ticker-btn { background: #444; font-size: 11px; height: 42px; border: 1px solid #555; }
         #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; z-index: 100; }
         #mic-btn { width: 90%; height: 80px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; border-radius: 15px; touch-action: none; }
         #v-meter { height: 8px; background: #000; width: 90%; margin: 0 auto 10px; border-radius: 4px; overflow: hidden; }
@@ -23,46 +23,46 @@
     </style>
 </head>
 <body onload="init()">
-    <div id="status" style="text-align:center; font-size:12px; padding:6px; background:#333;">接続待機中...</div>
+    <div id="status" style="text-align:center; font-size:12px; padding:6px; background:#333;">接続中...</div>
 
-    <div class="label">1. 種別設定</div>
+    <div class="label">1. 種別</div>
     <div id="type-grid" class="grid"></div>
 
-    <div class="label">2. 運行情報テロップ</div>
+    <div class="label">2. 運行情報 (10種)</div>
     <div class="grid">
         <button class="ticker-btn" onclick="sendTicker('平常通り運転しています。')">平常</button>
         <button class="ticker-btn" onclick="sendTicker('強風のため、一部区間で速度を落として運転しています。')">強風</button>
-        <button class="ticker-btn" onclick="sendTicker('大雨の影響で、ダイヤに乱れが出ています。')" style="color:#3498db">大雨</button>
+        <button class="ticker-btn" onclick="sendTicker('大雨の影響で、ダイヤに大幅な乱れが出ています。')" style="color:#3498db">大雨</button>
         <button class="ticker-btn" onclick="sendTicker('車両点検を行っているため、停車しております。')" style="color:#e74c3c">車両点検</button>
         <button class="ticker-btn" onclick="sendTicker('踏切内の安全確認を行っています。発車までお待ちください。')">踏切確認</button>
         <button class="ticker-btn" onclick="sendTicker('前の列車との間隔調整のため、しばらく停車いたします。')">間隔調整</button>
-        <button class="ticker-btn" onclick="sendTicker('本日、沿線イベント開催のため、臨時ダイヤで運行しています。')">臨時ダイヤ</button>
+        <button class="ticker-btn" onclick="sendTicker('本日、沿線イベント開催のため、混雑が予想されます。')">イベント</button>
         <button class="ticker-btn" onclick="sendTicker('急病人救護のため、この駅でしばらく停車いたします。')">急病人</button>
-        <button class="ticker-btn" onclick="sendTicker('線路内に立ち入りがあったため、安全確認を行っています。')">安全確認</button>
+        <button class="ticker-btn" onclick="sendTicker('線路内に立ち入りがあったため、安全確認を行っています。')">線路立入</button>
         <button class="ticker-btn" onclick="sendTicker('接続待ちのため、発車が数分遅れる見込みです。')">接続待ち</button>
     </div>
 
-    <div class="label">3. ドア操作</div>
+    <div class="label">3. ドア</div>
     <button id="cut-switch" style="width:100%; height:40px; margin-bottom:10px;" onclick="toggleCut()">3/4 締切：OFF</button>
     <div class="grid" style="grid-template-columns: 1fr 1fr; gap:10px;">
-        <button class="open-btn" onclick="sendDoor('open', 'left')">◀ 左ドア開</button>
-        <button class="open-btn" onclick="sendDoor('open', 'right')">右ドア開 ▶</button>
-        <button class="close-btn" style="grid-column: span 2" onclick="sendDoor('close')">■ ドア全閉 (発車)</button>
+        <button class="open-btn" onclick="sendDoor('open', 'left')">◀ 左ドア</button>
+        <button class="open-btn" onclick="sendDoor('open', 'right')">右ドア ▶</button>
+        <button class="close-btn" style="grid-column: span 2" onclick="sendDoor('close')">■ ドア全閉</button>
     </div>
 
-    <div class="label">4. 行先設定</div>
+    <div class="label">4. 行先</div>
     <div class="grid" style="grid-template-columns: 1fr 1fr; margin-bottom:8px;">
-        <button id="b-katihama" onclick="setDir('館浜')">館浜 方面</button>
-        <button id="b-akayama" onclick="setDir('赤山町')">赤山町 方面</button>
+        <button id="b-katihama" onclick="setDir('館浜')">館浜方面</button>
+        <button id="b-akayama" onclick="setDir('赤山町')">赤山町方面</button>
     </div>
     <div id="dest-grid" class="grid4"></div>
 
-    <div class="label">5. 現在駅選択 (放送連動)</div>
+    <div class="label">5. 現在駅（LCD連動）</div>
     <div id="station-list"></div>
 
     <div id="mic-container">
         <div id="v-meter"><div id="v-bar"></div></div>
-        <button id="mic-btn">🎤 マイク放送 (長押し)</button>
+        <button id="mic-btn">🎤 放送中 (長押し)</button>
     </div>
 
     <script>
@@ -116,9 +116,12 @@
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id);
-                conn.on('open', () => { document.getElementById('status').innerText = "ONLINE"; document.getElementById('status').style.background = "#2ecc71"; });
+                conn.on('open', () => { 
+                    document.getElementById('status').innerText = "ONLINE"; 
+                    document.getElementById('status').style.background = "#2ecc71"; 
+                    updateUI();
+                });
             });
-            updateUI();
         }
 
         function updateUI() {
@@ -129,9 +132,10 @@
 
             const list = document.getElementById('station-list'); list.innerHTML = '';
             const tIdx = config.types.indexOf(selType);
-            if(tIdx > 4) { // 回送・試運転用
-                 const b = document.createElement('button'); b.className = "st-btn"; b.innerText = "運行開始（表示更新）";
-                 b.onclick = () => conn.send({ type:'update', now:'---', next:'---', trainType:selType, dest:selDest, bound:selBound });
+            
+            if(tIdx > 4) { // 回送・試運転
+                 const b = document.createElement('button'); b.className = "st-btn"; b.innerText = "特殊運用開始";
+                 b.onclick = () => conn.send({ type:'update', now:'---', next:'---', trainType:selType, dest:"", bound:selBound });
                  list.appendChild(b); return;
             }
             
