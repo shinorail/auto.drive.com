@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 乗務員支援</title>
+    <title>館浜電鉄 乗務員支援 Pro</title>
     
-    <link rel="manifest" href="data:application/manifest+json,{'name':'館浜電鉄乗務員用','short_name':'乗務支援','start_url':'.','display':'standalone','background_color':'#1a1a1a','theme_color':'#f44336','icons':[{'src':'https://via.placeholder.com/192/f44336/ffffff?text=運','sizes':'192x192','type':'image/png'}]}">
+    <link rel="manifest" href="data:application/manifest+json,{'name':'館浜電鉄乗務員用','short_name':'乗務支援','start_url':'.','display':'standalone','background_color':'#000000','theme_color':'#f44336','icons':[{'src':'https://via.placeholder.com/192/f44336/ffffff?text=運','sizes':'192x192','type':'image/png'}]}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -14,28 +14,26 @@
             --bg-color: #000000;
             --card-bg: #1c1c1e;
             --text-main: #ffffff;
-            --text-sub: #8e8e93;
-            --accent-stop: #ffcc00; /* 停車：警戒黄色 */
-            --pass-dim: 0.3;
-            --btn-active: #ffffff;
+            --accent-stop: #ffcc00;
+            --checked-bg: #2c2c2e;
+            --checked-text: #636366;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
             padding: 0;
             overflow-x: hidden;
-            -webkit-user-select: none; /* 誤操作防止の選択禁止 */
+            -webkit-user-select: none;
+            touch-action: manipulation; /* ダブルタップズーム防止 */
         }
 
-        /* ヘッダー：時計とスリープ状態 */
         header {
             position: sticky;
             top: 0;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
+            background: rgba(0,0,0,0.9);
             padding: 10px 15px;
             display: flex;
             justify-content: space-between;
@@ -44,67 +42,82 @@
             z-index: 100;
         }
 
-        #current-time { font-size: 24px; font-weight: bold; font-family: monospace; }
-        #wake-status { font-size: 10px; padding: 4px 8px; border-radius: 10px; background: #333; }
-        #wake-status.active { background: #28a745; color: white; }
+        #current-time { font-size: 26px; font-weight: bold; font-family: 'Courier New', monospace; }
+        #wake-status { font-size: 11px; padding: 4px 10px; border-radius: 12px; background: #333; transition: 0.3s; }
+        #wake-status.active { background: #28a745; box-shadow: 0 0 8px #28a745; }
 
-        /* 種別選択（レスポンシブ・グリッド） */
         .type-selector {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
-            padding: 10px;
-            background: #111;
+            gap: 2px;
+            background: #000;
+            padding: 2px;
         }
 
         .type-btn {
             border: none;
-            padding: 15px 2px;
+            padding: 18px 0;
             font-weight: bold;
             font-size: 14px;
-            border-radius: 4px;
             color: #fff;
-            opacity: 0.4;
-            transition: 0.2s;
+            opacity: 0.3;
         }
 
-        .type-btn.active { opacity: 1; outline: 3px solid #fff; z-index: 1; }
-        .type-local { background: #666; }
+        .type-btn.active { opacity: 1; position: relative; }
+        .type-btn.active::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: #fff; }
+
+        .type-local { background: #555; }
         .type-semi { background: #007aff; }
         .type-express { background: #ff9500; }
         .type-rapid { background: #af52de; }
         .type-limited { background: #ff3b30; }
 
-        /* 駅リスト */
-        .station-list { padding: 5px; }
+        .station-list { padding: 4px; }
 
         .station-row {
             display: flex;
             align-items: center;
-            height: 60px;
+            height: 70px;
             margin-bottom: 4px;
             background: var(--card-bg);
-            border-radius: 6px;
+            border-radius: 8px;
+            transition: all 0.1s ease;
+            cursor: pointer;
         }
 
-        .station-row.pass { opacity: var(--pass-dim); }
-        .station-row.stop { border-left: 10px solid var(--accent-stop); }
+        /* 停車駅の強調表示 */
+        .station-row.stop { border-left: 12px solid var(--accent-stop); }
+        .station-row.pass { opacity: 0.4; border-left: 12px solid #444; }
+
+        /* チェック済み（通過済み）の状態 */
+        .station-row.checked {
+            background: var(--checked-bg);
+            opacity: 0.2;
+            transform: scale(0.98);
+            border-left-color: #555 !important;
+        }
 
         .indicator {
-            width: 70px;
+            width: 60px;
             text-align: center;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
         }
         .stop .indicator { color: var(--accent-stop); }
 
         .name-group { flex: 1; margin-left: 10px; }
-        .name-ja { font-size: 20px; font-weight: bold; display: block; }
-        
-        /* タブレット・横向き対応 */
+        .name-ja { font-size: 22px; font-weight: bold; }
+
+        .check-mark {
+            width: 40px;
+            font-size: 24px;
+            color: var(--accent-stop);
+            visibility: hidden;
+        }
+        .checked .check-mark { visibility: visible; }
+
         @media (min-width: 768px) {
-            .station-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-            .type-btn { padding: 25px 0; font-size: 18px; }
+            .station-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         }
     </style>
 </head>
@@ -112,7 +125,7 @@
 
 <header>
     <div id="current-time">00:00:00</div>
-    <div id="wake-status">常時点灯：OFF</div>
+    <div id="wake-status">SLEEP禁止: OFF</div>
 </header>
 
 <nav class="type-selector">
@@ -127,7 +140,7 @@
 
 <script>
     const data = [
-        { name: "赤山町", stops: [1,1,1,1,1] }, // [普,準,急,快,特]
+        { name: "赤山町", stops: [1,1,1,1,1] },
         { name: "西赤山", stops: [1,1,1,0,0] },
         { name: "奥峯口", stops: [1,1,1,0,0] },
         { name: "日野森", stops: [1,1,1,1,0] },
@@ -149,8 +162,10 @@
     ];
 
     const typeIdx = { local: 0, semi: 1, express: 2, rapid: 3, limited: 4 };
+    let currentWakeLock = null;
 
     function updateView(type, btn) {
+        // 全ボタンのリセット
         document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         
@@ -161,57 +176,53 @@
             const isStop = st.stops[typeIdx[type]];
             const row = document.createElement('div');
             row.className = `station-row ${isStop ? 'stop' : 'pass'}`;
+            
             row.innerHTML = `
                 <div class="indicator">${isStop ? '停車' : '通過'}</div>
                 <div class="name-group"><span class="name-ja">${st.name}</span></div>
+                <div class="check-mark">✓</div>
             `;
+
+            // タップでチェックを入れる機能
+            row.addEventListener('click', () => {
+                row.classList.toggle('checked');
+                // タップのたびにWakeLockを確実にする
+                requestWakeLock();
+            });
+
             container.appendChild(row);
         });
-        
-        // 操作のたびにWake Lockを再要求（ブラウザ制限対策）
-        requestWakeLock();
     }
 
-    // --- 自動スリープ禁止機能 (Screen Wake Lock API) ---
-    let wakeLock = null;
+    // スリープ禁止 (Screen Wake Lock API)
     async function requestWakeLock() {
-        try {
-            if ('wakeLock' in navigator) {
-                wakeLock = await navigator.wakeLock.request('screen');
+        if ('wakeLock' in navigator) {
+            try {
+                currentWakeLock = await navigator.wakeLock.request('screen');
                 const status = document.getElementById('wake-status');
-                status.innerText = "常時点灯：ON";
+                status.innerText = "SLEEP禁止: ON";
                 status.classList.add('active');
-                
-                wakeLock.addEventListener('release', () => {
-                    status.innerText = "常時点灯：OFF";
-                    status.classList.remove('active');
-                });
+            } catch (err) {
+                console.error(`${err.name}, ${err.message}`);
             }
-        } catch (err) {
-            console.error(`${err.name}, ${err.message}`);
         }
     }
 
-    // アプリ復帰時に再取得
-    document.addEventListener('visibilitychange', () => {
-        if (wakeLock !== null && document.visibilityState === 'visible') {
-            requestWakeLock();
+    // 時計の更新
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('current-time').innerText = now.toLocaleTimeString('ja-JP', {hour12: false});
+    }, 1000);
+
+    // 画面復帰時の処理
+    document.addEventListener('visibilitychange', async () => {
+        if (currentWakeLock !== null && document.visibilityState === 'visible') {
+            await requestWakeLock();
         }
     });
 
-    // 時計
-    setInterval(() => {
-        document.getElementById('current-time').innerText = new Date().toLocaleTimeString('ja-JP', {hour12: false});
-    }, 1000);
-
-    // 初回起動
+    // 初期表示
     updateView('local', document.querySelector('.type-local'));
-</script>
-
-<script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('data:application/javascript,self.addEventListener("fetch", function(e){})');
-    }
 </script>
 
 </body>
