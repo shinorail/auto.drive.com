@@ -1,3 +1,4 @@
+// sw.js (空のままでもPWAとして認識されます)
 self.addEventListener('fetch', function(event) {
-  // インストール可能にするための空のフェッチハンドラ
+    // ネットワークリクエストの処理
 });
