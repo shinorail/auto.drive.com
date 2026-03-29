@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>館浜電鉄 駅発車標システム</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        body { background: #000; margin: 0; color: #fff; font-family: "MS UI Gothic", "Meiryo", sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #scaler { width: 1200px; height: 600px; background: #111; border: 10px solid #333; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; }
+        
+        .station-name { font-size: 40px; border-bottom: 4px solid #555; padding-bottom: 10px; margin-bottom: 20px; color: #aaa; }
+        .board-header { display: flex; font-size: 24px; color: #ffcc00; margin-bottom: 10px; border-bottom: 2px solid #333; }
+        .col-time { width: 150px; } .col-type { width: 200px; } .col-dest { flex-grow: 1; } .col-rem { width: 250px; }
+
+        .row { display: flex; height: 120px; align-items: center; border-bottom: 2px solid #222; font-size: 65px; font-weight: bold; overflow: hidden; }
+        .type-box { border: 4px solid #fff; padding: 0 10px; line-height: 1.1; margin-right: 20px; }
+        
+        /* 種別色設定 */
+        .type-普通 { border-color: #fff; color: #fff; }
+        .type-準急 { border-color: #0f0; color: #0f0; }
+        .type-急行 { border-color: #f00; color: #f00; }
+        .type-快急 { border-color: #ff8c00; color: #ff8c00; }
+        .type-特急 { border-color: #00ffff; color: #00ffff; }
+
+        .time { font-family: monospace; color: #ffcc00; font-size: 55px; }
+        .dest { margin-left: 20px; }
+        .remarks { font-size: 35px; color: #0f0; text-align: right; flex-grow: 1; }
+
+        /* パタパタアニメ */
+        .flip { animation: flipEffect 0.5s ease-in-out; }
+        @keyframes flipEffect { 0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); opacity: 0.5; } 100% { transform: rotateX(0); } }
+        
+        #ticker-area { margin-top: auto; background: #000; border: 2px solid #444; height: 60px; overflow: hidden; position: relative; }
+        #ticker-text { position: absolute; white-space: nowrap; font-size: 35px; color: #ffcc00; top: 5px; animation: scroll 15s linear infinite; }
+        @keyframes scroll { from { transform: translateX(1200px); } to { transform: translateX(-100%); } }
+    </style>
+</head>
+<body>
+    <div id="scaler">
+        <div class="station-name">館浜電鉄 線　<span id="st-now">---</span> 駅</div>
+        
+        <div class="board-header">
+            <div class="col-time">時刻</div><div class="col-type">種別</div><div class="col-dest">行先</div><div class="col-rem">備考</div>
+        </div>
+
+        <div class="row" id="row-1">
+            <div class="col-time time" id="t-1">12:34</div>
+            <div class="col-type"><span class="type-box" id="tp-1">普通</span></div>
+            <div class="col-dest dest" id="ds-1">館浜</div>
+            <div class="remarks" id="rm-1">先発</div>
+        </div>
+
+        <div class="row" id="row-2" style="opacity: 0.6; font-size: 50px; height: 100px;">
+            <div class="col-time time">12:45</div>
+            <div class="col-type"><span class="type-box" style="border-color:#0f0; color:#0f0;">準急</span></div>
+            <div class="col-dest dest">赤山町</div>
+            <div class="remarks">次発</div>
+        </div>
+
+        <div id="ticker-area">
+            <div id="ticker-text">館浜電鉄をご利用いただきましてありがとうございます。</div>
+        </div>
+    </div>
+
+    <script>
+        const TARGET_ID = "tannihama-master-node";
+        const peer = new Peer(); // 駅表示機自身のIDはランダムでOK
+        
+        let conn;
+        function connect() {
+            conn = peer.connect(TARGET_ID);
+            conn.on('open', () => {
+                console.log("Connected to Dispatcher");
+                document.getElementById('ticker-text').innerText = "運行システムに接続しました。";
+            });
+            conn.on('data', (data) => {
+                if(data.type === 'update') {
+                    updateBoard(data);
+                }
+                if(data.type === 'ticker') {
+                    document.getElementById('ticker-text').innerText = data.text;
+                }
+            });
+        }
+
+        function updateBoard(data) {
+            const tp = document.getElementById('tp-1');
+            const ds = document.getElementById('ds-1');
+            const stNow = document.getElementById('st-now');
+
+            // アニメーション適用
+            [tp, ds].forEach(el => {
+                el.classList.remove('flip');
+                void el.offsetWidth;
+                el.classList.add('flip');
+            });
+
+            setTimeout(() => {
+                stNow.innerText = data.now;
+                tp.innerText = data.trainType;
+                tp.className = `type-box type-${data.trainType}`;
+                
+                if(data.trainType === '回送' || data.trainType === '試運転') {
+                    ds.innerText = " ---- ";
+                } else {
+                    ds.innerText = data.dest;
+                }
+                
+                // 備考欄の切り替え（終点なら表示を変えるなど）
+                const rm = document.getElementById('rm-1');
+                if(data.now === data.dest) {
+                    rm.innerText = "当駅止まり";
+                    rm.style.color = "red";
+                } else {
+                    rm.innerText = "先発";
+                    rm.style.color = "#0f0";
+                }
+            }, 250);
+        }
+
+        peer.on('open', connect);
+        
+        // 画面リサイズ対応
+        function setScale() {
+            const s = Math.min(window.innerWidth/1200, window.innerHeight/600);
+            document.getElementById('scaler').style.transform = `scale(${s})`;
+        }
+        window.onresize = setScale; setScale();
+    </script>
+</body>
+</html>
