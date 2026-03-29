@@ -3,70 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>指令コンソール V8</title>
+    <title>館浜電鉄 運行指令システム</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: #fff; margin: 0; padding: 10px; padding-bottom: 240px; }
-        .label { font-size: 11px; color: #ffcc00; margin: 15px 0 6px; font-weight: bold; text-transform: uppercase; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        button { background: #333; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; }
-        button.active { background: #ffcc00; color: #000; }
-        .open-btn { background: #e67e22; height: 50px; }
-        .close-btn { background: #2980b9; height: 50px; }
-        .st-btn { width: 100%; text-align: left; padding: 16px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 16px; color: #fff; }
-        .emergency-btn { background: #c0392b; height: 60px; font-size: 14px; grid-column: span 3; margin-top: 10px; }
-        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; }
-        #mic-btn { width: 90%; height: 80px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; border-radius: 15px; }
+        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; margin: 0; padding: 15px; padding-bottom: 240px; }
+        .section-title { font-size: 13px; color: #ffcc00; margin: 20px 0 10px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        button { background: #222; border: 1px solid #444; color: #fff; padding: 15px 5px; border-radius: 8px; font-weight: bold; font-size: 13px; active { opacity: 0.6; } }
+        button.active { background: #ffcc00; color: #000; border-color: #fff; }
+        .sos-btn { background: #900; grid-column: span 3; height: 60px; font-size: 16px; border: 2px solid #f00; }
+        .sos-btn.active { background: #f00; animation: flash 0.5s infinite; }
+        .door-btn { height: 60px; font-size: 14px; }
+        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 10px; background: #111; border-left: 12px solid #333; border-radius: 6px; font-size: 18px; }
+        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #111; padding: 20px 0; border-top: 3px solid #333; text-align: center; }
+        #mic-btn { width: 85%; height: 85px; background: #e74c3c; border: none; color: #fff; font-size: 22px; font-weight: bold; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
     </style>
 </head>
 <body onload="init()">
-    <div id="status" style="text-align:center; font-size:12px; padding:6px; background:#333;">通信準備中...</div>
+    <div id="stat" style="text-align:center; font-size:14px; padding:10px; background:var(--th-red); margin-bottom:10px; border-radius:5px;">接続待機中...</div>
 
-    <div class="label">🚨 指令業務</div>
+    <div class="section-title">■ 緊急・指令</div>
     <div class="grid">
-        <button class="emergency-btn" id="sos-btn" onclick="toggleSOS()">防護無線発報（緊急停止）</button>
-        <button onclick="sendTicker('【運行指令】 1024列車、車両点検のため最寄りの駅で待機せよ。')">指令受領1</button>
-        <button onclick="sendTicker('【運行指令】 全列車、防護無線を受信したため緊急停止してください。')">指令受領2</button>
-        <button onclick="sendTicker('現在、指令所と連絡を試みています。しばらくお待ちください。')">連絡中</button>
+        <button id="sos-btn" class="sos-btn" onclick="toggleSOS()">防護無線 (SOS) 発報</button>
+        <button onclick="sendTicker('【運行指令】 信号トラブルのため、全列車一旦停止してください。')">信号トラブル</button>
+        <button onclick="sendTicker('【運行指令】 車両故障が発生しました。現場の指示に従ってください。')">車両故障</button>
+        <button onclick="sendTicker('平常通り運転しております。ご利用ありがとうございました。')">放送終了</button>
     </div>
 
-    <div class="label">1. 種別</div>
+    <div class="section-title">1. 列車種別</div>
     <div id="type-grid" class="grid"></div>
 
-    <div class="label">2. 運行テロップ</div>
+    <div class="section-title">2. 運行表示・テロップ</div>
     <div class="grid">
         <button onclick="sendTicker('平常通り運転しています。')">平常</button>
-        <button onclick="sendTicker('車両点検を行っているため、停車しております。')" style="color:#e74c3c">点検中</button>
-        <button onclick="sendTicker('信号待ちのため、しばらく停車いたします。')">信号待ち</button>
-        <button onclick="sendTicker('踏切内の安全確認を行っています。')">踏切確認</button>
-        <button onclick="sendTicker('大雨の影響で、ダイヤに乱れが出ています。')">大雨</button>
-        <button onclick="sendTicker('接続待ちのため、発車までお待ちください。')">接続待ち</button>
+        <button onclick="sendTicker('強風のため、一部区間で速度を落として運転しています。')" style="color:#3498db">強風</button>
+        <button onclick="sendTicker('大雨の影響で、ダイヤに大幅な乱れが出ています。')" style="color:#3498db">大雨</button>
+        <button onclick="sendTicker('車両点検を行っているため、この駅でしばらく停車いたします。')" style="color:#e74c3c">車両点検</button>
+        <button onclick="sendTicker('踏切内の安全確認を行っています。発車までお待ちください。')">踏切確認</button>
+        <button onclick="sendTicker('急病人救護のため、しばらく停車いたします。')">急病人</button>
     </div>
 
-    <div class="label">3. ドア・設備</div>
-    <div class="grid" style="grid-template-columns: 1fr 1fr;">
-        <button id="cut-switch" onclick="toggleCut()">3/4締切: OFF</button>
-        <button onclick="sendDoor('close')">■ ドア全閉</button>
-        <button class="open-btn" onclick="sendDoor('open', 'left')">◀ 左ドア</button>
-        <button class="open-btn" onclick="sendDoor('open', 'right')">右ドア ▶</button>
+    <div class="section-title">3. ドア・3/4締切</div>
+    <div class="grid">
+        <button id="cut-btn" style="grid-column: span 3; background:#444;" onclick="toggleCut()">3/4 締切：OFF</button>
+        <button class="door-btn" style="background:#e67e22;" onclick="sendDoor('open', 'left')">◀ 左開</button>
+        <button class="door-btn" style="background:#e67e22;" onclick="sendDoor('open', 'right')">右開 ▶</button>
+        <button class="door-btn" style="background:#2980b9;" onclick="sendDoor('close')">■ 全閉</button>
     </div>
 
-    <div class="label">4. 行先</div>
-    <div class="grid" style="grid-template-columns: 1fr 1fr; margin-bottom:8px;">
-        <button id="b-katihama" onclick="setDir('館浜')">館浜方面</button>
-        <button id="b-akayama" onclick="setDir('赤山町')">赤山町方面</button>
+    <div class="section-title">4. 行先設定</div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; margin-bottom:10px;">
+        <button id="b-up" onclick="setDir('館浜')">館浜 方面</button>
+        <button id="b-down" onclick="setDir('赤山町')">赤山町 方面</button>
     </div>
     <div id="dest-grid" class="grid4"></div>
 
-    <div class="label">5. 現在駅（正確な停車駅データ）</div>
+    <div class="section-title">5. 現在駅選択（停車駅データ連動）</div>
     <div id="station-list"></div>
 
-    <div id="mic-container"><button id="mic-btn">🎤 指令・放送 (長押し)</button></div>
+    <div id="mic-container"><button id="mic-btn">🎤 指令放送 (長押し)</button></div>
 
     <script>
         const config = {
             types: ["普通", "準急", "急行", "快急", "特急", "回送", "試運転"],
+            // 画像の停車駅データを完全再現 [普通, 準急, 急行, 快急, 特急]
             stations: [
                 { name: "赤山町", stop: [1,1,1,1,1], trans: "" },
                 { name: "西赤山", stop: [1,1,1,0,0], trans: "" },
@@ -90,16 +92,21 @@
             ]
         };
 
-        let conn, peer, localStream, isCut = false, isSos = false;
-        let selType = "普通", selDest = "館浜", selBound = "館浜";
+        let conn, peer, localStream, selType="普通", selDest="館浜", selBound="館浜", isCut=false, isSos=false;
 
         function init() {
             const tg = document.getElementById('type-grid');
-            config.types.forEach(t => { const b = document.createElement('button'); b.innerText = t; b.onclick = () => { selType = t; updateUI(); }; tg.appendChild(b); });
+            config.types.forEach(t => {
+                const b = document.createElement('button'); b.innerText = t;
+                b.onclick = () => { selType = t; updateUI(); }; tg.appendChild(b);
+            });
             const dg = document.getElementById('dest-grid');
-            config.stations.forEach(st => { const b = document.createElement('button'); b.innerText = st.name; b.onclick = () => { selDest = st.name; updateUI(); }; dg.appendChild(b); });
-            const mb = document.getElementById('mic-btn');
-            mb.onpointerdown = (e) => { e.preventDefault(); micOn(); }; mb.onpointerup = mb.onpointerleave = micOff;
+            config.stations.forEach(st => {
+                const b = document.createElement('button'); b.innerText = st.name;
+                b.onclick = () => { selDest = st.name; updateUI(); }; dg.appendChild(b);
+            });
+            document.getElementById('mic-btn').onpointerdown = (e) => { e.preventDefault(); micOn(); };
+            document.getElementById('mic-btn').onpointerup = micOff;
             connect();
         }
 
@@ -108,21 +115,25 @@
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id);
-                conn.on('open', () => { document.getElementById('status').innerText = "指令通信確立"; document.getElementById('status').style.background = "#2ecc71"; updateUI(); });
+                conn.on('open', () => { 
+                    const s = document.getElementById('stat');
+                    s.innerText = "ONLINE - 指令通信確立"; s.style.background = "#2ecc71";
+                    updateUI();
+                });
             });
         }
 
         function updateUI() {
-            document.getElementById('b-katihama').className = selBound === '館浜' ? 'active' : '';
-            document.getElementById('b-akayama').className = selBound === '赤山町' ? 'active' : '';
-            document.querySelectorAll('#type-grid button').forEach(b => b.className = b.innerText === selType ? 'active' : '');
-            document.querySelectorAll('#dest-grid button').forEach(b => b.className = b.innerText === selDest ? 'active' : '');
+            document.getElementById('b-up').className = (selBound === '館浜' ? 'active' : '');
+            document.getElementById('b-down').className = (selBound === '赤山町' ? 'active' : '');
+            document.querySelectorAll('#type-grid button').forEach(b => b.className = (b.innerText === selType ? 'active' : ''));
+            document.querySelectorAll('#dest-grid button').forEach(b => b.className = (b.innerText === selDest ? 'active' : ''));
             
             const list = document.getElementById('station-list'); list.innerHTML = '';
             const tIdx = config.types.indexOf(selType);
             
             if(tIdx > 4) { // 回送・試運転
-                 const b = document.createElement('button'); b.className = "st-btn"; b.innerText = "特殊運用（全駅通過）開始";
+                 const b = document.createElement('button'); b.className = "st-btn"; b.innerText = "特殊運用開始";
                  b.onclick = () => conn.send({ type:'update', now:'---', next:'---', trainType:selType, dest:"", bound:selBound });
                  list.appendChild(b); return;
             }
@@ -130,7 +141,8 @@
             let sts = (selBound === "赤山町") ? [...config.stations].reverse() : [...config.stations];
             sts.forEach((st, i) => {
                 if(st.stop[tIdx] === 1) {
-                    const b = document.createElement('button'); b.className = "st-btn"; b.innerText = st.name;
+                    const b = document.createElement('button'); b.className = "st-btn";
+                    b.innerHTML = `<div>${st.name}</div><div style="font-size:10px; color:#aaa;">${st.trans ? '換:'+st.trans : ''}</div>`;
                     b.onclick = () => {
                         let next = "終点";
                         for(let j=i+1; j<sts.length; j++) { if(sts[j].stop[tIdx] === 1) { next = sts[j].name; break; } }
@@ -144,8 +156,8 @@
 
         function sendDoor(s, side='none') { if(conn) conn.send({ type:'door', status:s, side:side }); }
         function sendTicker(t) { if(conn) conn.send({ type:'ticker', text:t }); }
-        function toggleCut() { isCut = !isCut; document.getElementById('cut-switch').innerText = isCut ? "3/4締切: ON" : "3/4締切: OFF"; document.getElementById('cut-switch').className = isCut ? 'active' : ''; if(conn) conn.send({ type:'cut', active:isCut }); }
-        function toggleSOS() { isSos = !isSos; document.getElementById('sos-btn').className = isSos ? 'emergency-btn active' : 'emergency-btn'; if(conn) conn.send({ type:'emergency', active:isSos }); }
+        function toggleCut() { isCut = !isCut; document.getElementById('cut-btn').innerText = isCut ? "3/4 締切：ON" : "3/4 締切：OFF"; document.getElementById('cut-btn').className = isCut ? 'active' : ''; if(conn) conn.send({ type:'cut', active:isCut }); }
+        function toggleSOS() { isSos = !isSos; document.getElementById('sos-btn').className = isSos ? 'sos-btn active' : 'sos-btn'; if(conn) conn.send({ type:'emergency', active:isSos }); }
         function setDir(d) { selBound = d; updateUI(); }
         async function micOn() { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); peer.call(new URLSearchParams(window.location.search).get('id'), localStream); }
         function micOff() { if(localStream) localStream.getTracks().forEach(t => t.stop()); }
