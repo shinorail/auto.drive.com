@@ -5,6 +5,14 @@
     <title>館浜電鉄 総合表示システム 極(KIWAMI)</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    // デバイス判定と自動リダイレクト
+if (window.location.search.indexOf('id=') === -1) { 
+    // すでにIDを持って接続している場合はループを防ぐため除外
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        // スマホ・タブレットの場合は con.html へ飛ばす
+        window.location.href = 'con.html';
+    }
+}
     <style>
         :root { --th-green: #2ecc71; --th-red: #ff3b30; --th-orange: #e67e22; }
         body { background: #0a0a0a; margin: 0; color: #fff; font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
