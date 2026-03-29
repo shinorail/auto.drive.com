@@ -5,89 +5,93 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>館浜電鉄 総合表示システム 極 V15</title>
+    <title>館浜電鉄 総合表示システム 極 V16 パタパタEdition</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --th-green: #2ecc71; --th-red: #ff3b30; --th-orange: #e67e22; --th-blue: #2980b9; --th-light: #f2f2f2; }
-        body { background: #000; margin: 0; color: #fff; font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; transition: filter 0.5s; }
-        #scaler { width: 1280px; height: 850px; display: flex; flex-direction: column; gap: 15px; transform-origin: center; }
-        .night-mode { filter: brightness(0.5); }
+        body { background: #000; margin: 0; color: #fff; font-family: "Segoe UI", "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #scaler { width: 1280px; height: 850px; display: flex; flex-direction: column; gap: 15px; transform-origin: center; position: relative;}
         
-        /* 外部幕 */
-        .external-maku { background: #000; border: 8px solid #444; border-radius: 12px; height: 160px; display: flex; align-items: center; padding: 0 30px; }
-        .maku-box, .dest-box { height: 95px; overflow: hidden; border: 3px solid #fff; background: #000; position: relative; }
-        .maku-box { min-width: 260px; margin-right: 25px; }
-        .dest-box { flex-grow: 1; }
-        .rolling-text { position: absolute; width: 100%; font-size: 80px; font-weight: bold; line-height: 95px; top: 0; left: 0; text-align: center; }
-        .roll-anim { animation: maku-roll 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95); }
-        @keyframes maku-roll { 0% { transform: translateY(-100%); } 50% { transform: translateY(100%); } 51% { transform: translateY(-100%); } 100% { transform: translateY(0); } }
+        /* 外部幕（パタパタアニメーション） */
+        .external-maku { background: #111; border: 8px solid #444; border-radius: 12px; height: 160px; display: flex; align-items: center; padding: 0 30px; }
+        .flap-container { height: 100px; background: #000; border: 4px solid #fff; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .flap-type { width: 260px; margin-right: 25px; font-size: 70px; }
+        .flap-dest { flex-grow: 1; font-size: 80px; }
+        
+        /* パタパタエフェクト */
+        .flap-anim { animation: flap-flip 0.6s ease-in-out; }
+        @keyframes flap-flip {
+            0% { transform: rotateX(0deg); filter: brightness(1); }
+            50% { transform: rotateX(90deg); filter: brightness(0.5); }
+            100% { transform: rotateX(0deg); filter: brightness(1); }
+        }
 
         /* 車内LCD */
         .internal-lcd { background: #fff; color: #000; flex-grow: 1; border: 6px solid #333; display: flex; overflow: hidden; position: relative; }
-        .lcd-main { flex: 7; padding: 30px; display: flex; flex-direction: column; border-right: 6px solid #000; position: relative; }
-        header { border-bottom: 6px solid #000; display: flex; align-items: center; padding-bottom: 15px; margin-bottom: 20px; }
-        .lcd-bound { font-size: 28px; font-weight: bold; background: #000; color: #fff; padding: 8px 18px; margin-right: 25px; }
-        .lcd-type { font-size: 45px; font-weight: bold; border: 5px solid #000; padding: 0 20px; }
-        .lcd-now-st { font-size: 58px; font-weight: bold; flex-grow: 1; text-align: right; }
-        .next-st { font-size: 160px; font-weight: bold; text-align: center; margin: 10px 0; letter-spacing: -6px; line-height: 1; }
+        .lcd-main { flex: 7; padding: 25px; display: flex; flex-direction: column; border-right: 6px solid #000; position: relative; }
+        
+        /* ヘッダー・時刻 */
+        header { border-bottom: 6px solid #000; display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 15px; }
+        .lcd-bound { font-size: 24px; font-weight: bold; background: #000; color: #fff; padding: 5px 15px; margin-right: 20px; }
+        .lcd-type { font-size: 40px; font-weight: bold; border: 4px solid #000; padding: 0 15px; }
+        .clock { margin-left: auto; font-size: 32px; font-weight: bold; font-family: monospace; }
 
-        /* 遅延表示タグ */
-        #delay-tag { background: var(--th-red); color: #fff; padding: 5px 15px; border-radius: 5px; font-size: 24px; font-weight: bold; display: none; margin-left: 20px; vertical-align: middle; }
+        /* 次の駅・乗り換え */
+        .next-st-wrap { text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .next-label { font-size: 28px; color: #666; font-weight: bold; }
+        .next-st-name { font-size: 150px; font-weight: bold; letter-spacing: -5px; line-height: 1.1; }
+        .transfer-box { height: 60px; background: #eee; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: #444; visibility: hidden; }
+        .transfer-show { visibility: visible; animation: fade-in 0.5s; }
 
         /* 情報エリア */
-        .info-display-area { margin-top: auto; padding: 20px; background: var(--th-light); border-radius: 20px; position: relative; overflow: hidden; height: 220px; border: 3px solid #ccc; text-align: center;}
-        #combined-msg-box { height: 60px; position: relative; overflow: hidden; margin-bottom: 15px; }
-        #status-text { font-size: 36px; font-weight: bold; width: 100%; position: absolute; line-height: 60px; top: 0; left: 0; }
-        .ticker-mode { white-space: nowrap; width: auto !important; animation: scroll-text var(--scroll-speed, 12s) linear infinite; }
-        @keyframes scroll-text { from { transform: translateX(1100px); } to { transform: translateX(-100%); } }
+        .info-area { height: 200px; background: var(--th-light); border-radius: 15px; margin-top: auto; padding: 15px; border: 2px solid #ccc; position: relative; }
+        #status-text { font-size: 38px; font-weight: bold; white-space: nowrap; position: absolute; top: 20px; }
+        .ticker-anim { animation: scroll-text var(--speed, 12s) linear infinite; }
+        @keyframes scroll-text { from { transform: translateX(900px); } to { transform: translateX(-100%); } }
 
         /* ドア */
-        .door-visual { width: 420px; height: 130px; background: #333; margin: 0 auto; position: relative; border: 6px solid #333; overflow: hidden; }
-        .door-leaf { width: 50%; height: 100%; background: linear-gradient(90deg, #bbb, #eee, #bbb); border: 1px solid #777; position: absolute; top: 0; transition: transform 0.8s ease-in-out; }
-        .door-l { left: 0; } .door-r { right: 0; }
-        .door-open .door-l { transform: translateX(-96%); }
-        .door-open .door-r { transform: translateX(96%); }
-        .door-warning { animation: blink-door 0.5s infinite; }
-        @keyframes blink-door { 0%, 100% { background: #333; } 50% { background: #f1c40f; } }
+        .door-visual { width: 380px; height: 100px; background: #333; margin: 60px auto 0 auto; position: relative; border: 4px solid #333; overflow: hidden; }
+        .door-leaf { width: 50%; height: 100%; background: linear-gradient(90deg, #999, #eee, #999); position: absolute; transition: 0.7s; }
+        .door-l { left: 0; border-right: 1px solid #444; } .door-r { right: 0; border-left: 1px solid #444; }
+        .door-open .door-l { transform: translateX(-95%); } .door-open .door-r { transform: translateX(95%); }
 
-        /* 広告 */
-        .lcd-ad { flex: 3; background: #222; overflow: hidden; position: relative; }
-        #ad-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 1s ease-in-out; }
-        #cut-badge { position: absolute; top: 15px; right: 15px; background: var(--th-red); color: white; padding: 12px; font-size: 20px; font-weight: bold; display: none; z-index: 10; border-radius: 8px; }
-
-        #emergency-overlay { position: absolute; inset: 0; background: rgba(255,0,0,0.95); z-index: 99; display: none; align-items: center; justify-content: center; }
-        #qr-overlay { position: absolute; inset: 0; background: #fff; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* 広告・特殊 */
+        .lcd-ad { flex: 3; background: #222; position: relative; }
+        #ad-img { width: 100%; height: 100%; object-fit: cover; }
+        #cut-badge { position: absolute; top: 10px; right: 10px; background: var(--th-red); color: #fff; padding: 10px; font-weight: bold; display: none; }
+        #emergency-overlay { position: absolute; inset: 0; background: red; z-index: 100; display: none; align-items: center; justify-content: center; font-size: 100px; font-weight: bold; color: #fff; }
+        #qr-overlay { position: absolute; inset: 0; background: #fff; z-index: 101; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #000; }
     </style>
 </head>
 <body>
     <div id="scaler">
         <div class="external-maku">
-            <div class="maku-box"><div id="ext-type" class="rolling-text">---</div></div>
-            <div class="dest-box"><div id="ext-dest" class="rolling-text">---</div></div>
+            <div id="flap-t" class="flap-container flap-type">---</div>
+            <div id="flap-d" class="flap-container flap-dest">---</div>
         </div>
         <div class="internal-lcd">
-            <div id="qr-overlay"><div id="qrcode" onclick="startSys()"></div><p style="color:#000; font-weight:bold; margin-top:15px;">タップして開始</p></div>
-            <div id="emergency-overlay"><h1 style="font-size:120px; color:white; font-weight:bold;">SOS 急停車</h1></div>
+            <div id="qr-overlay"><div id="qrcode" onclick="start()"></div><p>タップでシステム起動</p></div>
+            <div id="emergency-overlay">SOS 急停車</div>
             <div class="lcd-main">
                 <header>
-                    <div class="lcd-bound" id="in-bound">---方面</div>
+                    <div class="lcd-bound" id="in-bound">---</div>
                     <div class="lcd-type" id="in-type">---</div>
-                    <div id="delay-tag">⚠️ 遅れ 約--分</div>
-                    <div class="lcd-now-st" id="in-now">---</div>
+                    <div class="clock" id="live-clock">00:00:00</div>
                 </header>
-                <div id="next-area">
-                    <div id="next-label" style="font-size:30px; color:#777; font-weight:bold;">次は Next</div>
-                    <div class="next-st" id="in-next">---</div>
+                <div class="next-st-wrap">
+                    <div class="next-label" id="next-label">次は Next</div>
+                    <div class="next-st-name" id="in-next">---</div>
+                    <div class="transfer-box" id="transfer-info">🔄 乗り換え：自営R線</div>
                 </div>
-                <div class="info-display-area">
-                    <div id="combined-msg-box"><div id="status-text">館浜電鉄をご利用いただきありがとうございます。</div></div>
-                    <div id="door-container" class="door-visual"><div class="door-leaf door-l"></div><div class="door-leaf door-r"></div></div>
+                <div class="info-area">
+                    <div id="status-text">館浜電鉄をご利用いただきありがとうございます。</div>
+                    <div id="door-box" class="door-visual"><div class="door-leaf door-l"></div><div class="door-leaf door-r"></div></div>
                 </div>
             </div>
             <div class="lcd-ad">
                 <div id="cut-badge">3/4 締切</div>
-                <img id="ad-img" src="img/kakekomi.jpg" onerror="this.src='https://via.placeholder.com/400x800/222222/ffffff?text=ADVERTISING'">
+                <img id="ad-img" src="https://via.placeholder.com/400x800/222222/ffffff?text=TANNIHAMA+AD">
             </div>
         </div>
     </div>
@@ -95,87 +99,80 @@
 
     <script>
         const peer = new Peer();
-        let currentTicker = "館浜電鉄をご利用いただきありがとうございます。";
-        let isDoorOpen = false;
-        const ads = ["img/kakekomi.jpg", "img/ad2.jpg", "img/ad3.jpg"];
-        let adIdx = 0;
+        let currentMsg = "館浜電鉄をご利用いただきありがとうございます。";
+        
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
+        }
+        setInterval(updateClock, 1000);
 
-        function startSys() { 
-            document.getElementById('qr-overlay').style.display='none'; 
+        function start() {
+            document.getElementById('qr-overlay').style.display='none';
             document.getElementById('remote-audio').play().catch(()=>{});
-            setInterval(() => {
-                const img = document.getElementById('ad-img');
-                img.style.opacity = 0;
-                setTimeout(() => { adIdx = (adIdx + 1) % ads.length; img.src = ads[adIdx]; img.style.opacity = 1; }, 1000);
-            }, 15000);
         }
 
         peer.on('open', (id) => {
             const url = window.location.href.split('?')[0].replace('index.html','') + `con.html?id=${id}`;
-            new QRCode(document.getElementById("qrcode"), { text: url, width: 250, height: 250 });
+            new QRCode(document.getElementById("qrcode"), { text: url, width: 200, height: 200 });
         });
 
         peer.on('connection', (conn) => {
             document.getElementById('qr-overlay').style.display='none';
             conn.on('data', (data) => {
-                const txt = document.getElementById('status-text');
-                const doorCont = document.getElementById('door-container');
-
                 if(data.type === 'update') {
-                    triggerMaku('ext-type', data.trainType);
-                    triggerMaku('ext-dest', data.dest + (data.trainType === '回送' || data.trainType === '試運転' ? '' : ' 行'));
+                    // パタパタアニメーション適用
+                    applyFlap('flap-t', data.trainType);
+                    const isService = (data.trainType !== '回送' && data.trainType !== '試運転');
+                    applyFlap('flap-d', isService ? data.dest + " 行" : " ");
+
                     document.getElementById('in-type').innerText = data.trainType;
-                    document.getElementById('in-bound').innerText = (data.trainType === '回送' || data.trainType === '試運転') ? "不定期" : data.bound + "方面";
-                    document.getElementById('in-now').innerText = data.now;
+                    document.getElementById('in-bound').innerText = isService ? data.bound + "方面" : "---";
                     
-                    const nl = document.getElementById('next-label');
                     const ni = document.getElementById('in-next');
-                    if(data.trainType === '回送'){ nl.innerText="Non-service"; ni.innerText="回送"; }
-                    else if(data.trainType === '試運転'){ nl.innerText="Test Run"; ni.innerText="試運転"; }
-                    else { nl.innerText="次は Next"; ni.innerText=data.next; }
-                }
-                
-                if(data.type === 'door') {
-                    if(data.status === 'open') {
-                        isDoorOpen = true; doorCont.classList.add('door-open'); doorCont.classList.add('door-warning');
-                        txt.classList.remove('ticker-mode');
-                        txt.innerText = (data.side==='left'?'左':'右') + "側のドアが開きます";
-                        txt.style.color = "var(--th-orange)";
+                    const nl = document.getElementById('next-label');
+                    if(data.trainType === '回送') { nl.innerText="Non-service"; ni.innerText="回送"; }
+                    else if(data.trainType === '試運転') { nl.innerText="Test Run"; ni.innerText="試運転"; }
+                    else { nl.innerText="次は Next"; ni.innerText = data.next; }
+
+                    // 乗り換え表示判定
+                    const trans = document.getElementById('transfer-info');
+                    if(isService && (data.now === '浜園' || data.now === '館浜' || data.next === '浜園' || data.next === '館浜')) {
+                        trans.classList.add('transfer-show');
                     } else {
-                        isDoorOpen = false; doorCont.classList.remove('door-open'); doorCont.classList.remove('door-warning');
-                        applyTicker();
+                        trans.classList.remove('transfer-show');
                     }
                 }
-
-                if(data.type === 'ticker') { 
-                    currentTicker = data.text; 
-                    if(data.speed) document.documentElement.style.setProperty('--scroll-speed', data.speed + 's');
-                    if(!isDoorOpen) applyTicker(); 
+                if(data.type === 'door') {
+                    const db = document.getElementById('door-box');
+                    const st = document.getElementById('status-text');
+                    if(data.status === 'open') {
+                        db.classList.add('door-open');
+                        st.innerText = (data.side==='left'?'左':'右') + "側のドアが開きます";
+                        st.classList.remove('ticker-anim');
+                    } else {
+                        db.classList.remove('door-open');
+                        st.innerText = currentMsg;
+                        if(currentMsg.length > 15) st.classList.add('ticker-anim');
+                    }
                 }
-
-                if(data.type === 'delay') {
-                    const tag = document.getElementById('delay-tag');
-                    if(data.time === 0) { tag.style.display = 'none'; }
-                    else { tag.style.display = 'inline-block'; tag.innerText = `⚠️ 遅れ 約${data.time}分`; }
+                if(data.type === 'ticker') {
+                    currentMsg = data.text;
+                    const st = document.getElementById('status-text');
+                    st.innerText = currentMsg;
+                    if(currentMsg.length > 15) st.classList.add('ticker-anim'); else st.classList.remove('ticker-anim');
                 }
-
                 if(data.type === 'emergency') document.getElementById('emergency-overlay').style.display = data.active ? 'flex' : 'none';
                 if(data.type === 'cut') document.getElementById('cut-badge').style.display = data.active ? 'block' : 'none';
-                if(data.type === 'night') document.body.classList.toggle('night-mode', data.active);
             });
         });
 
-        function applyTicker() {
-            const txt = document.getElementById('status-text');
-            txt.style.color = "#000"; txt.innerText = currentTicker;
-            if(currentTicker.length > 15) txt.classList.add('ticker-mode'); else txt.classList.remove('ticker-mode');
-        }
-
-        function triggerMaku(id, text) {
+        function applyFlap(id, text) {
             const el = document.getElementById(id);
             if(el.innerText === text) return;
-            el.classList.remove('roll-anim'); void el.offsetWidth; el.classList.add('roll-anim');
-            setTimeout(() => { el.innerText = text; }, 350);
+            el.classList.remove('flap-anim'); void el.offsetWidth;
+            el.classList.add('flap-anim');
+            setTimeout(() => { el.innerText = text; }, 300);
         }
 
         peer.on('call', (call) => { call.answer(); call.on('stream', (s) => { document.getElementById('remote-audio').srcObject = s; }); });
