@@ -7,79 +7,90 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --th-green: #2ecc71; --black: #000; --gray: #666; }
-        body { background-color: #333; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        #scale-wrapper { width: 1326px; height: 746px; transform-origin: center; background: #fff; position: relative; border: 5px solid #000; }
+        :root { --th-green: #2ecc71; --black: #000; }
+        body { background-color: #222; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; overflow: hidden; }
         
-        /* ヘッダーデザイン */
-        header { height: 140px; border-bottom: 4px solid #000; display: flex; align-items: center; padding: 0 30px; position: relative; }
-        .header-type { font-size: 40px; font-weight: bold; border: 4px solid #000; padding: 5px 20px; margin-right: 20px; }
-        .header-dest { font-size: 40px; font-weight: bold; margin-right: 20px; }
-        .header-line { font-size: 30px; color: var(--th-green); font-weight: bold; border-right: 2px solid #ccc; padding-right: 20px; }
-        .header-st { font-size: 85px; font-weight: bold; margin-left: 40px; }
-        .header-clock { position: absolute; right: 30px; top: 20px; font-size: 35px; font-weight: bold; }
+        #display-main {
+            width: 1280px; height: 720px; background: white; border: 4px solid #000;
+            position: relative; transform-origin: center; flex-shrink: 0;
+        }
 
-        /* QRコード初期表示 */
-        #setup-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #qrcode { padding: 20px; background: #fff; border: 1px solid #ccc; }
+        /* 接続待ちオーバーレイ */
+        #waiting-overlay {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.98);
+            z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* ヘッダーエリア */
+        header {
+            height: 160px; border-bottom: 5px solid #000;
+            display: flex; align-items: center; padding: 0 40px; gap: 30px;
+        }
+        .type-box { font-size: 50px; font-weight: bold; border: 5px solid #000; padding: 10px 30px; min-width: 120px; text-align: center; }
+        .dest-text { font-size: 50px; font-weight: bold; flex-grow: 1; }
+        .line-text { font-size: 35px; color: var(--th-green); font-weight: bold; border-left: 3px solid #ccc; padding-left: 30px; }
+        
+        .station-group { text-align: right; }
+        .tadaima { font-size: 25px; color: #666; display: block; }
+        .station-now { font-size: 90px; font-weight: bold; line-height: 1; }
+
+        /* コンテンツエリア */
+        main { padding: 60px 40px; }
+        .progress-container { width: 100%; height: 50px; background: #eee; border-radius: 25px; overflow: hidden; margin-top: 40px; }
+        .progress-bar { width: 15%; height: 100%; background: var(--th-green); transition: width 0.5s; }
     </style>
 </head>
 <body>
-    <div id="scale-wrapper">
-        <div id="setup-overlay">
-            <h2>スマホを接続してください</h2>
+    <div id="display-main">
+        <div id="waiting-overlay">
+            <h1 style="margin-bottom:20px;">操作用QRコード</h1>
             <div id="qrcode"></div>
-            <p id="peer-id-display">Connecting to network...</p>
+            <p id="peer-id" style="margin-top:20px; font-weight:bold; color:#666;">接続待機中...</p>
         </div>
 
         <header>
-            <div class="header-type" id="display-type">普通</div>
-            <div class="header-dest" id="display-dest">新井川 ゆき</div>
-            <div class="header-line" id="display-line">館濱線</div>
-            <div class="header-st" id="st-name-main">館浜</div>
-            <div class="header-clock" id="clock">00:00</div>
+            <div class="type-box" id="disp-type">普通</div>
+            <div class="dest-text" id="disp-dest">新井川 ゆき</div>
+            <div class="line-text" id="disp-line">館濱線</div>
+            <div class="station-group">
+                <span class="tadaima">ただいま</span>
+                <div class="station-now" id="disp-st">館浜</div>
+            </div>
         </header>
-        <div style="padding: 100px; text-align: center; font-size: 40px; color: #ccc;">運行中...</div>
+
+        <main>
+            <div style="font-size:30px; font-weight:bold; color:#666;">次は</div>
+            <div style="font-size:120px; font-weight:bold; margin-top:10px;" id="disp-next">西赤山</div>
+            <div class="progress-container"><div class="progress-bar"></div></div>
+        </main>
     </div>
 
-    <audio id="remote-audio" autoplay playsinline></audio>
-
     <script>
-        function setScale() {
-            const scale = Math.min(window.innerWidth / 1326, window.innerHeight / 746);
-            document.getElementById('scale-wrapper').style.transform = `scale(${scale})`;
+        // 画面リサイズ対応
+        function resize() {
+            const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+            document.getElementById('display-main').style.transform = `scale(${scale})`;
         }
-        window.addEventListener('resize', setScale); setScale();
+        window.onresize = resize; resize();
 
-        // 毎回ユニークなIDを生成して衝突を防ぐ
-        const ID = "TATEHAMA-" + Math.floor(Math.random() * 9000 + 1000);
-        const peer = new Peer(ID);
+        // 通信設定
+        const peer = new Peer("TH-DISPLAY-MAIN"); // IDを固定
 
         peer.on('open', (id) => {
-            document.getElementById('peer-id-display').innerText = "ID: " + id;
             const conUrl = window.location.href.replace('index.html', 'con.html') + "?id=" + id;
-            new QRCode(document.getElementById("qrcode"), { text: conUrl, width: 250, height: 250 });
+            new QRCode(document.getElementById("qrcode"), { text: conUrl, width: 300, height: 300 });
+            document.getElementById('peer-id').innerText = "接続準備完了";
         });
 
         peer.on('connection', (conn) => {
-            document.getElementById('setup-overlay').style.display = 'none'; // 接続されたら消す
+            document.getElementById('waiting-overlay').style.display = 'none';
             conn.on('data', (data) => {
-                if(data.type === 'station') document.getElementById('st-name-main').innerText = data.val;
-                if(data.type === 'type') document.getElementById('display-type').innerText = data.val;
-                if(data.type === 'dest') document.getElementById('display-dest').innerText = data.val + " ゆき";
-                if(data.type === 'line') document.getElementById('display-line').innerText = data.val;
+                if(data.type === 'station') document.getElementById('disp-st').innerText = data.val;
+                if(data.type === 'next') document.getElementById('disp-next').innerText = data.val;
+                if(data.type === 'type') document.getElementById('disp-type').innerText = data.val;
+                if(data.type === 'dest') document.getElementById('disp-dest').innerText = data.val + " ゆき";
             });
         });
-
-        peer.on('call', (call) => {
-            call.answer();
-            call.on('stream', (s) => { document.getElementById('remote-audio').srcObject = s; });
-        });
-
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-        }, 1000);
     </script>
 </body>
 </html>
