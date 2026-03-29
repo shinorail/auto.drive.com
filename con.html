@@ -6,68 +6,72 @@
     <title>操作盤</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #000; color: #fff; margin: 0; padding: 10px; padding-bottom: 100px; }
-        .section { background: #1c1c1e; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
-        h3 { margin-top: 0; font-size: 14px; color: #aaa; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        button { background: #333; border: none; color: #fff; padding: 15px 5px; border-radius: 8px; font-weight: bold; }
-        button.active { background: #ffcc00; color: #000; }
-        input { width: 100%; padding: 10px; box-sizing: border-box; background: #222; border: 1px solid #444; color: #fff; border-radius: 5px; }
-        .st-row { display: flex; align-items: center; background: #2c2c2e; margin: 5px 0; padding: 10px; border-radius: 5px; }
-        #mic-btn { width: 100%; height: 60px; background: #ff3b30; margin-top: 10px; border-radius: 30px; font-size: 20px; }
+        body { font-family: sans-serif; background: #000; color: #fff; margin: 0; padding: 10px; }
+        .btn { background: #333; border: none; color: #fff; padding: 20px 10px; border-radius: 8px; font-weight: bold; width: 100%; margin-bottom: 10px; font-size: 16px; }
+        .btn:active { background: #555; }
+        input { width: 100%; padding: 15px; margin-bottom: 15px; background: #222; border: 1px solid #444; color: #fff; border-radius: 5px; box-sizing: border-box; }
+        h3 { color: #888; font-size: 14px; margin-bottom: 10px; }
+        #mic-btn { background: #ff3b30; height: 80px; font-size: 20px; position: fixed; bottom: 0; left: 0; margin: 0; border-radius: 0; }
     </style>
 </head>
 <body onload="init()">
-    <div class="section">
-        <h3>運行設定</h3>
-        <input type="text" placeholder="路線名 (例: 館濱線)" onchange="sendData('line', this.value)">
-        <div class="grid" style="margin-top:10px;">
-            <button onclick="sendData('dest', '新井川')">新井川 行</button>
-            <button onclick="sendData('dest', '館浜')">館浜 行</button>
-            <button onclick="sendData('type', '普通')">普通</button>
-            <button onclick="sendData('type', '快速')">快速</button>
-            <button onclick="sendData('type', '特急')">特急</button>
-        </div>
+    <h3>路線設定</h3>
+    <input type="text" id="line-input" placeholder="路線名を入力して確定" onchange="sendData('line', this.value)">
+
+    <h3>種別・行先</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="btn" onclick="sendData('type', '普通')">普通</button>
+        <button class="btn" onclick="sendData('type', '快速')">快速</button>
+        <button class="btn" onclick="sendData('dest', '新井川')">新井川 行</button>
+        <button class="btn" onclick="sendData('dest', '館浜')">館浜 行</button>
     </div>
 
-    <div class="section">
-        <h3>駅名指示</h3>
-        <div id="st-list"></div>
-    </div>
+    <h3>駅名指示</h3>
+    <div id="st-buttons"></div>
 
-    <div style="position:fixed; bottom:0; left:0; width:100%; padding:10px; background:#000; box-sizing:border-box;">
-        <button id="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送開始</button>
-    </div>
+    <button id="mic-btn" class="btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送開始 (長押し)</button>
 
     <script>
         let conn, peer, call;
         const sts = ["館浜", "駒野", "河原崎", "海岸公園", "虹ケ浜", "津崎", "浜園", "羽衣橋", "新井川"];
 
         function init() {
-            const targetID = new URLSearchParams(window.location.search).get('id') || "TH-SYSTEM-MAIN";
+            const targetID = new URLSearchParams(window.location.search).get('id');
+            if(!targetID) return alert("QRコードから開き直してください");
+
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(targetID);
-                conn.on('open', () => { document.body.style.borderTop = "5px solid #28a745"; });
+                conn.on('open', () => { console.log("Connected"); });
+                conn.on('error', (err) => { alert("接続エラー: " + err); });
             });
 
-            const list = document.getElementById('st-list');
+            // 駅ボタン生成
+            const container = document.getElementById('st-buttons');
             sts.forEach(s => {
-                const div = document.createElement('div');
-                div.className = 'st-row';
-                div.innerText = s;
-                div.onclick = () => sendData('station', s);
-                list.appendChild(div);
+                const b = document.createElement('button');
+                b.className = 'btn';
+                b.innerText = s;
+                b.onclick = () => sendData('station', s);
+                container.appendChild(b);
             });
         }
 
-        function sendData(type, val) { if(conn) conn.send({type, val}); }
+        function sendData(type, val) {
+            if (conn && conn.open) {
+                conn.send({type, val});
+            } else {
+                alert("PCに接続されていません。再読み込みしてください。");
+            }
+        }
 
         async function micOn() {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const targetID = new URLSearchParams(window.location.search).get('id') || "TH-SYSTEM-MAIN";
-            call = peer.call(targetID, stream);
-            document.getElementById('mic-btn').style.background = "#fff";
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const targetID = new URLSearchParams(window.location.search).get('id');
+                call = peer.call(targetID, stream);
+                document.getElementById('mic-btn').style.background = "#28a745";
+            } catch (e) { alert("マイクが使えません"); }
         }
         function micOff() { if(call) call.close(); document.getElementById('mic-btn').style.background = "#ff3b30"; }
     </script>
