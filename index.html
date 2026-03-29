@@ -7,58 +7,43 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --bg-base: #f1f1f1; --screen-bg: #fff; --black: #000; --gray: #666; --th-green: #2ecc71; }
-        body { background-color: #333; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        #scale-wrapper { width: 1326px; height: 746px; transform-origin: center; flex-shrink: 0; }
-        .display-container { width: 100%; height: 100%; background: var(--screen-bg); border: 5px solid #000; position: relative; overflow: hidden; }
-        #left-screen { position: absolute; left: 0; top: 0; bottom: 0; width: 300px; border-right: 4px solid #ccc; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #main-screen { margin-left: 304px; position: relative; height: 100%; }
-        header { height: 140px; border-bottom: 4px solid var(--black); display: flex; align-items: center; padding: 0 30px; position: relative; }
-        .header-type { font-size: 40px; font-weight: bold; border: 4px solid var(--black); padding: 5px 20px; margin-right: 20px; }
+        :root { --th-green: #2ecc71; --black: #000; --gray: #666; }
+        body { background-color: #333; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        #scale-wrapper { width: 1326px; height: 746px; transform-origin: center; background: #fff; position: relative; border: 5px solid #000; }
+        
+        /* ヘッダーデザイン */
+        header { height: 140px; border-bottom: 4px solid #000; display: flex; align-items: center; padding: 0 30px; position: relative; }
+        .header-type { font-size: 40px; font-weight: bold; border: 4px solid #000; padding: 5px 20px; margin-right: 20px; }
         .header-dest { font-size: 40px; font-weight: bold; margin-right: 20px; }
-        .header-line-name { font-size: 30px; color: var(--th-green); font-weight: bold; border-right: 2px solid #ccc; padding-right: 20px; }
-        .header-st-group { margin-left: 40px; }
-        .header-tadaima { font-size: 20px; color: var(--gray); display: block; }
-        .header-st { font-size: 85px; font-weight: bold; line-height: 1; }
-        .header-info-right { position: absolute; right: 30px; top: 20px; text-align: right; }
-        .header-clock { font-size: 35px; font-weight: bold; }
-        main { padding: 40px 40px; }
-        .st-list { display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px; }
-        .st-item { width: 40px; font-size: 22px; font-weight: bold; text-align: center; writing-mode: vertical-rl; }
-        .line-graph { width: 100%; height: 45px; background-color: #eee; border-radius: 25px; position: relative; margin: 30px 0; }
-        .line-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 10%; background-color: var(--th-green); border-radius: 25px 0 0 25px; }
-        .st-markers { display: flex; justify-content: space-between; width: 100%; }
-        .marker-item { display: flex; flex-direction: column; align-items: center; width: 60px; }
-        .marker-circle { width: 18px; height: 18px; background: #000; border-radius: 50%; margin-bottom: 10px; }
-        .num-box { font-size: 14px; font-weight: bold; border: 2px solid var(--black); border-radius: 4px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
-        #qr-box { position: absolute; right: 20px; bottom: 20px; background: #fff; border: 2px solid #000; padding: 15px; text-align: center; border-radius: 10px; }
+        .header-line { font-size: 30px; color: var(--th-green); font-weight: bold; border-right: 2px solid #ccc; padding-right: 20px; }
+        .header-st { font-size: 85px; font-weight: bold; margin-left: 40px; }
+        .header-clock { position: absolute; right: 30px; top: 20px; font-size: 35px; font-weight: bold; }
+
+        /* QRコード初期表示 */
+        #setup-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #qrcode { padding: 20px; background: #fff; border: 1px solid #ccc; }
     </style>
 </head>
-<body onclick="enableAudio()">
+<body>
     <div id="scale-wrapper">
-        <div class="display-container">
-            <div id="left-screen"><div style="font-size:50px; font-weight:bold; border:4px solid #000; padding:10px;">TH<br>館浜</div></div>
-            <div id="main-screen">
-                <header>
-                    <div class="header-type" id="display-type">普通</div>
-                    <div class="header-dest" id="display-dest">新井川 ゆき</div>
-                    <div class="header-line-name" id="display-line">館濱線</div>
-                    <div class="header-st-group">
-                        <span class="header-tadaima">ただいま</span>
-                        <div class="header-st" id="st-name-main">館浜</div>
-                    </div>
-                    <div class="header-info-right"><div class="header-clock" id="clock">12:12</div></div>
-                </header>
-                <main>
-                    <div class="st-list" id="st-labels"></div>
-                    <div class="line-graph"><div class="line-bar"></div></div>
-                    <div class="st-markers" id="st-dots"></div>
-                </main>
-            </div>
-            <div id="qr-box"><div id="qrcode"></div><p style="font-size:12px; margin-top:5px;">スマホでスキャン</p></div>
+        <div id="setup-overlay">
+            <h2>スマホを接続してください</h2>
+            <div id="qrcode"></div>
+            <p id="peer-id-display">Connecting to network...</p>
         </div>
+
+        <header>
+            <div class="header-type" id="display-type">普通</div>
+            <div class="header-dest" id="display-dest">新井川 ゆき</div>
+            <div class="header-line" id="display-line">館濱線</div>
+            <div class="header-st" id="st-name-main">館浜</div>
+            <div class="header-clock" id="clock">00:00</div>
+        </header>
+        <div style="padding: 100px; text-align: center; font-size: 40px; color: #ccc;">運行中...</div>
     </div>
+
     <audio id="remote-audio" autoplay playsinline></audio>
+
     <script>
         function setScale() {
             const scale = Math.min(window.innerWidth / 1326, window.innerHeight / 746);
@@ -66,14 +51,18 @@
         }
         window.addEventListener('resize', setScale); setScale();
 
-        const peer = new Peer("TH-SYSTEM-MAIN");
+        // 毎回ユニークなIDを生成して衝突を防ぐ
+        const ID = "TATEHAMA-" + Math.floor(Math.random() * 9000 + 1000);
+        const peer = new Peer(ID);
+
         peer.on('open', (id) => {
-            const url = window.location.href.replace('index.html', 'con.html') + "?id=" + id;
-            new QRCode(document.getElementById("qrcode"), { text: url, width: 120, height: 120 });
+            document.getElementById('peer-id-display').innerText = "ID: " + id;
+            const conUrl = window.location.href.replace('index.html', 'con.html') + "?id=" + id;
+            new QRCode(document.getElementById("qrcode"), { text: conUrl, width: 250, height: 250 });
         });
 
         peer.on('connection', (conn) => {
-            document.getElementById('qr-box').style.display = 'none';
+            document.getElementById('setup-overlay').style.display = 'none'; // 接続されたら消す
             conn.on('data', (data) => {
                 if(data.type === 'station') document.getElementById('st-name-main').innerText = data.val;
                 if(data.type === 'type') document.getElementById('display-type').innerText = data.val;
@@ -87,18 +76,10 @@
             call.on('stream', (s) => { document.getElementById('remote-audio').srcObject = s; });
         });
 
-        function enableAudio() { document.getElementById('remote-audio').play().then(()=>document.getElementById('remote-audio').pause()); }
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').innerText = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
         }, 1000);
-
-        // 初期駅リスト生成
-        const sts = ["館浜", "駒野", "河原崎", "海岸公園", "虹ケ浜", "津崎", "浜園", "羽衣橋", "新井川"];
-        sts.forEach((s, i) => {
-            document.getElementById('st-labels').innerHTML += `<div class="st-item">${s}</div>`;
-            document.getElementById('st-dots').innerHTML += `<div class="marker-item"><div class="marker-circle"></div><div class="num-box">JO${19-i}</div></div>`;
-        });
     </script>
 </body>
 </html>
