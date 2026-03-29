@@ -3,80 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 操作パネル</title>
+    <title>操作パネル</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 180px; user-select: none; }
-        .label { font-size: 11px; color: #aaa; margin: 15px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; text-transform: uppercase; }
+        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 180px; }
+        .label { font-size: 12px; color: #aaa; margin: 15px 0 6px; font-weight: bold; border-left: 4px solid #ffcc00; padding-left: 8px; }
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .dest-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 160px; overflow-y: auto; background: #222; padding: 8px; border-radius: 6px; border: 1px solid #444; }
-        button { background: #333; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; }
-        button.active { background: #ffcc00; color: #000; box-shadow: 0 0 10px rgba(255,204,0,0.5); }
+        .dest-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 160px; overflow-y: auto; background: #222; padding: 8px; border-radius: 6px; }
+        button { background: #444; border: none; color: #fff; padding: 12px 2px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        button.active { background: #ffcc00; color: #000; }
         .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 4px; font-size: 18px; display: block; color: #fff; }
-        .stop { border-left-color: #2ecc71; opacity: 1; }
-        .pass { border-left-color: #555; opacity: 0.2; pointer-events: none; }
-        
-        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); }
-        #mic-btn { width: 90%; height: 75px; display: block; margin: 0 auto; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; border-radius: 12px; }
-        #mic-btn:active { background: #fff; color: #ff3b30; }
+        .stop { border-left-color: #2ecc71; }
+        #mic-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 15px 0; border-top: 2px solid #444; }
+        #mic-btn { width: 90%; height: 75px; display: block; margin: 0 auto; background: #ff3b30; color: #fff; font-size: 20px; font-weight: bold; border-radius: 12px; touch-action: none; }
         #v-meter-wrap { width: 90%; height: 8px; background: #000; margin: 0 auto 10px; border-radius: 4px; overflow: hidden; }
-        #v-meter-bar { width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s; }
+        #v-meter-bar { width: 0%; height: 100%; background: #2ecc71; }
     </style>
 </head>
 <body onload="init()">
-    <div id="status" style="text-align:center; font-size:12px; padding:5px; color:#00ff00;">READY</div>
+    <div id="status" style="text-align:center; font-size:14px; padding:10px; background:#333;">接続を待っています...</div>
 
-    <div class="label">1. 運行方面 (DIR)</div>
+    <div class="label">運行方面</div>
     <div class="grid" style="grid-template-columns: 1fr 1fr;">
         <button id="b-katihama" onclick="setDirection('館浜')">館浜 方面</button>
         <button id="b-akayama" onclick="setDirection('赤山町')">赤山町 方面</button>
     </div>
 
-    <div class="label">2. 種別 (TYPE)</div>
+    <div class="label">種別</div>
     <div id="type-grid" class="grid"></div>
 
-    <div class="label">3. 終着駅 (DESTINATION)</div>
+    <div class="label">終着駅 (行先)</div>
     <div id="dest-grid" class="dest-grid"></div>
 
-    <div class="label">4. 駅選択 (NEXT STATION)</div>
+    <div class="label">駅選択</div>
     <div id="station-list"></div>
 
     <div id="mic-container">
         <div id="v-meter-wrap"><div id="v-meter-bar"></div></div>
-        <button id="mic-btn">🎤 マイク放送 (長押し)</button>
+        <button id="mic-btn">🎤 放送 (長押し)</button>
     </div>
 
     <script>
         const config = {
             types: ["普通", "準急", "急行", "快急", "特急"],
-            // 画像の停車駅データ [普通, 準急, 急行, 快急, 特急]
             stations: [
-                { name: "赤山町", stop: [1,1,1,1,1] },
-                { name: "西赤山", stop: [1,1,1,0,0] },
-                { name: "奥峯口", stop: [1,1,1,0,0] },
-                { name: "日野森", stop: [1,1,1,1,0] },
-                { name: "高見沢", stop: [1,1,1,0,0] },
-                { name: "水越",   stop: [1,1,1,1,0] },
-                { name: "藤江",   stop: [1,1,1,1,0] },
-                { name: "大道寺", stop: [1,1,1,1,1] },
-                { name: "江ノ原", stop: [1,1,1,0,0] },
-                { name: "新野崎", stop: [1,1,1,1,0] },
-                { name: "新井川", stop: [1,0,0,0,0] },
-                { name: "羽衣橋", stop: [1,0,0,0,0] },
-                { name: "浜園",   stop: [1,1,0,0,0] },
-                { name: "津崎",   stop: [1,0,0,0,0] },
-                { name: "虹ケ浜", stop: [1,0,0,0,0] },
-                { name: "海岸公園", stop: [1,0,0,0,0] },
-                { name: "河原崎", stop: [1,0,0,0,0] },
-                { name: "駒野",   stop: [1,1,0,0,0] },
+                { name: "赤山町", stop: [1,1,1,1,1] }, { name: "西赤山", stop: [1,1,1,0,0] },
+                { name: "奥峯口", stop: [1,1,1,0,0] }, { name: "日野森", stop: [1,1,1,1,0] },
+                { name: "高見沢", stop: [1,1,1,0,0] }, { name: "水越",   stop: [1,1,1,1,0] },
+                { name: "藤江",   stop: [1,1,1,1,0] }, { name: "大道寺", stop: [1,1,1,1,1] },
+                { name: "江ノ原", stop: [1,1,1,0,0] }, { name: "新野崎", stop: [1,1,1,1,0] },
+                { name: "新井川", stop: [1,0,0,0,0] }, { name: "羽衣橋", stop: [1,0,0,0,0] },
+                { name: "浜園",   stop: [1,1,0,0,0] }, { name: "津崎",   stop: [1,0,0,0,0] },
+                { name: "虹ケ浜", stop: [1,0,0,0,0] }, { name: "海岸公園", stop: [1,0,0,0,0] },
+                { name: "河原崎", stop: [1,0,0,0,0] }, { name: "駒野",   stop: [1,1,0,0,0] },
                 { name: "館浜",   stop: [1,1,1,1,1] }
             ]
         };
 
-        let conn, peer, currentCall, localStream, audioContext, analyser, dataArray, animationId;
-        let selType = config.types[0];
-        let selDest = "館浜"; 
-        let selBound = "館浜";
+        let conn, peer, localStream, audioContext, analyser, dataArray;
+        let selType = "普通", selDest = "館浜", selBound = "館浜";
 
         function init() {
             const tg = document.getElementById('type-grid');
@@ -89,9 +74,10 @@
                 const b = document.createElement('button'); b.innerText = st.name;
                 b.onclick = () => { selDest = st.name; updateUI(); }; dg.appendChild(b);
             });
-            const mBtn = document.getElementById('mic-btn');
-            mBtn.addEventListener('touchstart', (e) => { e.preventDefault(); micOn(); });
-            mBtn.addEventListener('touchend', micOff);
+            
+            const mb = document.getElementById('mic-btn');
+            mb.onpointerdown = (e) => { e.preventDefault(); micOn(); };
+            mb.onpointerup = mb.onpointerleave = micOff;
             connect();
         }
 
@@ -101,8 +87,11 @@
             const id = new URLSearchParams(window.location.search).get('id');
             peer = new Peer();
             peer.on('open', () => {
-                conn = peer.connect(id, { reliable: true });
-                conn.on('open', () => { document.getElementById('status').innerText = "CONNECTED"; });
+                conn = peer.connect(id);
+                conn.on('open', () => { 
+                    document.getElementById('status').innerText = "● PCに接続しました";
+                    document.getElementById('status').style.background = "#2ecc71";
+                });
             });
             updateUI();
         }
@@ -115,30 +104,57 @@
 
             const list = document.getElementById('station-list');
             list.innerHTML = '';
-            const typeIdx = config.types.indexOf(selType);
-            
-            let displayStations = [...config.stations];
-            if(selBound === "赤山町") displayStations.reverse();
+            const tIdx = config.types.indexOf(selType);
+            let sts = [...config.stations];
+            if(selBound === "赤山町") sts.reverse();
 
-            let passedDest = false;
-
-            displayStations.forEach((st, i) => {
-                if(passedDest) return;
-
-                const isStop = st.stop[typeIdx] === 1;
-                const b = document.createElement('button');
-                b.className = `st-btn ${isStop ? 'stop' : 'pass'}`;
-                b.innerText = st.name;
-
-                // 行先駅に到達したらそれ以降は表示しない
-                if(st.name === selDest) passedDest = true;
-
-                if(isStop) {
+            let foundDest = false;
+            sts.forEach((st, i) => {
+                if(foundDest) return;
+                if(st.stop[tIdx] === 1) {
+                    const b = document.createElement('button');
+                    b.className = "st-btn stop";
+                    b.innerText = st.name;
                     b.onclick = () => {
-                        let next = "";
-                        if (st.name === selDest) {
-                            next = "終点";
-                        } else {
-                            for (let j = i + 1; j < displayStations.length; j++) {
-                                if (displayStations[j].stop[typeIdx] === 1) {
-                                    next = displayStations[j
+                        let next = "終点";
+                        for(let j=i+1; j<sts.length; j++) {
+                            if(sts[j].stop[tIdx] === 1) { next = sts[j].name; break; }
+                            if(sts[j].name === selDest) { next = selDest; break; }
+                        }
+                        if(st.name === selDest) next = "終点";
+                        conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest, bound: selBound });
+                    };
+                    list.appendChild(b);
+                }
+                if(st.name === selDest) foundDest = true;
+            });
+        }
+
+        async function micOn() {
+            const id = new URLSearchParams(window.location.search).get('id');
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                peer.call(id, localStream);
+                audioContext = new AudioContext();
+                const source = audioContext.createMediaStreamSource(localStream);
+                analyser = audioContext.createAnalyser();
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                function loop() {
+                    analyser.getByteFrequencyData(dataArray);
+                    let s = 0; for(let v of dataArray) s += v;
+                    document.getElementById('v-meter-bar').style.width = (s/dataArray.length)*2 + "%";
+                    animationId = requestAnimationFrame(loop);
+                }
+                loop();
+            } catch(e) { alert("マイク許可が必要です"); }
+        }
+        function micOff() {
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            if(audioContext) audioContext.close();
+            cancelAnimationFrame(animationId);
+            document.getElementById('v-meter-bar').style.width = "0%";
+        }
+    </script>
+</body>
+</html>
