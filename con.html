@@ -3,148 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 操作盤 (種別連動版)</title>
+    <title>操作盤</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --text: #fff; --accent: #ffcc00; --danger: #ff3b30; --success: #28a745; --gray: #444;}
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 220px; user-select: none; }
-        header { position: sticky; top: 0; background: #000; padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
-        #conn-tag { font-size: 10px; padding: 4px 10px; border-radius: 20px; background: var(--danger); }
-        #conn-tag.on { background: var(--success); }
-        
-        .type-nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; }
-        .t-btn { border: 2px solid #555; padding: 12px 0; font-size: 10px; font-weight: bold; color: #fff; background: #222; border-radius: 5px;}
-        .t-btn.active { border-color: #fff; background-color: rgba(255,255,255,0.3); }
-        
-        /* 駅リストのスタイル */
-        .st-list-area { border-top: 1px solid #333; }
-        .row { display: flex; align-items: center; min-height: 65px; margin: 5px; background: var(--panel); border-radius: 8px; border-left: 10px solid var(--gray); transition: 0.2s; }
-        
-        /* 停車駅の表示 */
-        .row.stop { border-left-color: var(--accent); opacity: 1; }
-        /* 通過駅の表示 (ボタン無効) */
-        .row.pass { border-left-color: #333; opacity: 0.3; pointer-events: none; }
-        
-        .row.done { background: #000; border-left-color: #111; opacity: 0.2; }
-        .st-name { font-size: 20px; font-weight: bold; margin-left: 15px; }
-        .st-status-label { width: 50px; text-align: center; font-size: 10px; font-weight: bold; }
-
-        .tools { position: fixed; bottom: 0; width: 100%; background: #111; padding: 10px 0; border-top: 1px solid #333; z-index: 1000;}
-        .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 0 10px 10px; }
-        .tool-btn { background: #333; border: none; color: #fff; padding: 12px 0; border-radius: 5px; font-size: 10px; }
-        .mic-btn-container { display: flex; justify-content: space-around; align-items: center; width: 100%; }
-        .mic-btn { width: 70px; height: 70px; border-radius: 50%; background: #222; border: 4px solid #444; color: #fff; font-weight: bold; }
-        .mic-btn.active { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
+        body { font-family: sans-serif; background: #000; color: #fff; margin: 0; padding: 10px; padding-bottom: 100px; }
+        .section { background: #1c1c1e; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
+        h3 { margin-top: 0; font-size: 14px; color: #aaa; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        button { background: #333; border: none; color: #fff; padding: 15px 5px; border-radius: 8px; font-weight: bold; }
+        button.active { background: #ffcc00; color: #000; }
+        input { width: 100%; padding: 10px; box-sizing: border-box; background: #222; border: 1px solid #444; color: #fff; border-radius: 5px; }
+        .st-row { display: flex; align-items: center; background: #2c2c2e; margin: 5px 0; padding: 10px; border-radius: 5px; }
+        #mic-btn { width: 100%; height: 60px; background: #ff3b30; margin-top: 10px; border-radius: 30px; font-size: 20px; }
     </style>
 </head>
 <body onload="init()">
-    <header>
-        <div id="clock">00:00:00</div>
-        <div id="conn-tag">接続待機</div>
-    </header>
-    
-    <div class="type-nav" id="type-nav">
-        <button class="t-btn active" onclick="updateMode(this, '普通')">普通</button>
-        <button class="t-btn" onclick="updateMode(this, '準急')">準急</button>
-        <button class="t-btn" onclick="updateMode(this, '急行')">急行</button>
-        <button class="t-btn" onclick="updateMode(this, '快急')">快急</button>
-        <button class="t-btn" onclick="updateMode(this, '特急')">特急</button>
+    <div class="section">
+        <h3>運行設定</h3>
+        <input type="text" placeholder="路線名 (例: 館濱線)" onchange="sendData('line', this.value)">
+        <div class="grid" style="margin-top:10px;">
+            <button onclick="sendData('dest', '新井川')">新井川 行</button>
+            <button onclick="sendData('dest', '館浜')">館浜 行</button>
+            <button onclick="sendData('type', '普通')">普通</button>
+            <button onclick="sendData('type', '快速')">快速</button>
+            <button onclick="sendData('type', '特急')">特急</button>
+        </div>
     </div>
 
-    <div class="st-list-area" id="st-list"></div>
-    
-    <div class="tools">
-        <div class="tool-grid">
-            <button class="tool-btn" onclick="sendCmd('️ドア閉め')">ドア閉</button>
-            <button class="tool-btn" onclick="sendCmd('発車メロディ')">発メロ</button>
-            <button class="tool-btn" onclick="location.reload()">更新</button>
-            <button class="tool-btn" style="background:var(--danger)">非常</button>
-        </div>
-        <div class="mic-btn-container">
-            <button id="mic-btn" class="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送</button>
-        </div>
+    <div class="section">
+        <h3>駅名指示</h3>
+        <div id="st-list"></div>
+    </div>
+
+    <div style="position:fixed; bottom:0; left:0; width:100%; padding:10px; background:#000; box-sizing:border-box;">
+        <button id="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送開始</button>
     </div>
 
     <script>
-        // 駅名とそれぞれの停車パターン (1:停車, 0:通過)
-        const stationData = [
-            { name: "館浜",   stop: { "普通":1, "準急":1, "急行":1, "快急":1, "特急":1 } },
-            { name: "駒野",   stop: { "普通":1, "準急":1, "急行":0, "快急":0, "特急":0 } },
-            { name: "河原崎", stop: { "普通":1, "準急":1, "急行":1, "快急":0, "特急":0 } },
-            { name: "海岸公園", stop: { "普通":1, "準急":0, "急行":0, "快急":0, "特急":0 } },
-            { name: "虹ケ浜", stop: { "普通":1, "準急":1, "急行":1, "快急":1, "特急":0 } },
-            { name: "津崎",   stop: { "普通":1, "準急":0, "急行":0, "快急":0, "特急":0 } },
-            { name: "浜園",   stop: { "普通":1, "準急":1, "急行":1, "快急":0, "特急":0 } },
-            { name: "羽衣橋", stop: { "普通":1, "準急":1, "急行":1, "快急":1, "特急":0 } },
-            { name: "新井川", stop: { "普通":1, "準急":1, "急行":1, "快急":1, "特急":1 } }
-        ];
-
-        let currentType = "普通";
-        let peer, conn, call;
+        let conn, peer, call;
+        const sts = ["館浜", "駒野", "河原崎", "海岸公園", "虹ケ浜", "津崎", "浜園", "羽衣橋", "新井川"];
 
         function init() {
-            setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('ja-JP',{hour12:false}); }, 1000);
-            renderList();
-            
-            const params = new URLSearchParams(window.location.search);
-            const targetID = params.get('id');
+            const targetID = new URLSearchParams(window.location.search).get('id') || "TH-SYSTEM-MAIN";
             peer = new Peer();
-            peer.on('open', () => { if(targetID) { 
+            peer.on('open', () => {
                 conn = peer.connect(targetID);
-                conn.on('open', () => {
-                    document.getElementById('conn-tag').innerText = "接続中";
-                    document.getElementById('conn-tag').classList.add('on');
-                });
-            }});
-        }
+                conn.on('open', () => { document.body.style.borderTop = "5px solid #28a745"; });
+            });
 
-        // 種別ボタンを押した時の処理
-        function updateMode(btn, type) {
-            currentType = type;
-            document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            if(conn) conn.send({type:'type', val:type});
-            renderList(); // リストを再描画してボタンの有効/無効を更新
-        }
-
-        function renderList() {
             const list = document.getElementById('st-list');
-            list.innerHTML = '';
-            stationData.forEach(st => {
-                const isStop = st.stop[currentType] === 1;
+            sts.forEach(s => {
                 const div = document.createElement('div');
-                
-                // 停車駅か通過駅かでクラスを分ける
-                div.className = `row ${isStop ? 'stop' : 'pass'}`;
-                
-                div.innerHTML = `
-                    <div class="st-status-label">${isStop ? '停車' : '通過'}</div>
-                    <div class="st-name">${st.name}</div>
-                `;
-
-                // 停車駅の場合のみクリックイベントを設定
-                if(isStop) {
-                    div.onclick = () => {
-                        div.classList.toggle('done');
-                        if(conn) conn.send({type:'station', val:st.name});
-                    };
-                }
+                div.className = 'st-row';
+                div.innerText = s;
+                div.onclick = () => sendData('station', s);
                 list.appendChild(div);
             });
         }
 
+        function sendData(type, val) { if(conn) conn.send({type, val}); }
+
         async function micOn() {
-            const btn = document.getElementById('mic-btn');
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                btn.classList.add('active');
-                const targetID = new URLSearchParams(window.location.search).get('id');
-                call = peer.call(targetID, stream);
-            } catch (err) { console.error(err); }
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const targetID = new URLSearchParams(window.location.search).get('id') || "TH-SYSTEM-MAIN";
+            call = peer.call(targetID, stream);
+            document.getElementById('mic-btn').style.background = "#fff";
         }
-        function micOff() { document.getElementById('mic-btn').classList.remove('active'); if(call) call.close(); }
-        function sendCmd(cmd) { if(conn) conn.send({type:'cmd', val:cmd}); }
+        function micOff() { if(call) call.close(); document.getElementById('mic-btn').style.background = "#ff3b30"; }
     </script>
 </body>
 </html>
