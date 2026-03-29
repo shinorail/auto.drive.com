@@ -1,9 +1,17 @@
 {
-  "name": "館浜電鉄 運行システム",
-  "short_name": "館浜運行",
-  "start_url": "index.html",
+  "name": "館浜電鉄 運行指令システム",
+  "short_name": "館浜指令",
+  "description": "館浜電鉄の車両表示機を遠隔操作する乗務員用システム",
+  "start_url": "con.html",
   "display": "standalone",
   "background_color": "#000000",
-  "theme_color": "#2ecc71",
-  "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/821/821353.png", "sizes": "512x512", "type": "image/png" }]
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
 }
