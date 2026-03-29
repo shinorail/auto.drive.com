@@ -6,96 +6,125 @@
     <title>操作盤</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 100px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        button { background: #333; border: none; color: #fff; padding: 15px 5px; border-radius: 8px; font-weight: bold; }
+        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; padding-bottom: 120px; }
+        .label { font-size: 12px; color: #888; margin: 15px 0 5px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        button { background: #333; border: none; color: #fff; padding: 12px 5px; border-radius: 8px; font-weight: bold; }
         button.active { background: #ffcc00; color: #000; }
-        .st-btn { width: 100%; text-align: left; padding: 20px; margin-bottom: 10px; background: #222; border-left: 10px solid #444; border-radius: 5px; font-size: 18px; }
+        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 8px; background: #222; border-left: 10px solid #444; border-radius: 5px; font-size: 17px; }
         .stop { border-left-color: #2ecc71; opacity: 1; }
         .pass { border-left-color: #555; opacity: 0.2; pointer-events: none; }
         #mic-btn { position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; background: #ff3b30; border: none; color: #fff; font-size: 20px; font-weight: bold; }
     </style>
 </head>
-<body onload="connect()">
-    <div id="status" style="text-align:center; padding:10px;">接続準備中...</div>
-    <div class="grid">
-        <button class="t-btn active" onclick="setType(this, '普通')">普通</button>
-        <button class="t-btn" onclick="setType(this, '準急')">準急</button>
-        <button class="t-btn" onclick="setType(this, '急行')">急行</button>
-        <button class="t-btn" onclick="setType(this, '快急')">快急</button>
-        <button class="t-btn" onclick="setType(this, '特急')">特急</button>
-    </div>
-    <div id="list"></div>
-    <button id="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送ボタン</button>
+<body onload="init()">
+    <div id="status" style="text-align:center; font-size:12px; padding:10px;">接続中...</div>
+
+    <div class="label">種別</div>
+    <div id="type-grid" class="grid"></div>
+
+    <div class="label">行先</div>
+    <div id="dest-grid" class="grid"></div>
+
+    <div class="label">駅選択</div>
+    <div id="station-list"></div>
+
+    <button id="mic-btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送ボタン (長押し)</button>
 
     <script>
+        // 【データ定義エリア】ここを書き換えるだけで路線が変わります
+        const config = {
+            types: ["普通", "準急", "急行", "快急", "特急"],
+            dests: ["館浜", "新井川", "赤山町"],
+            stations: [
+                { name: "赤山町", stop: [1,1,1,1,1] },
+                { name: "西赤山", stop: [1,1,1,0,0] },
+                { name: "奥峯口", stop: [1,1,1,0,0] },
+                { name: "日野森", stop: [1,1,1,1,0] },
+                { name: "高見沢", stop: [1,1,1,0,0] },
+                { name: "水越",   stop: [1,1,1,1,0] },
+                { name: "藤江",   stop: [1,1,1,1,0] },
+                { name: "大道寺", stop: [1,1,1,1,1] },
+                { name: "江ノ原", stop: [1,1,1,0,0] },
+                { name: "新野崎", stop: [1,1,1,1,0] },
+                { name: "新井川", stop: [1,0,0,0,0] },
+                { name: "羽衣橋", stop: [1,0,0,0,0] },
+                { name: "浜園",   stop: [1,1,0,0,0] },
+                { name: "津崎",   stop: [1,0,0,0,0] },
+                { name: "虹ケ浜", stop: [1,0,0,0,0] },
+                { name: "海岸公園", stop: [1,0,0,0,0] },
+                { name: "河原崎", stop: [1,0,0,0,0] },
+                { name: "駒野",   stop: [1,1,0,0,0] },
+                { name: "館浜",   stop: [1,1,1,1,1] }
+            ]
+        };
+
         let conn, peer, call;
-        let currentType = "普通";
-        const stationData = [
-            { name: "赤山町", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} },
-            { name: "西赤山", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
-            { name: "奥峯口", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
-            { name: "日野森", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
-            { name: "高見沢", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
-            { name: "水越",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
-            { name: "藤江",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
-            { name: "大道寺", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} },
-            { name: "江ノ原", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
-            { name: "新野崎", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
-            { name: "新井川", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "羽衣橋", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "浜園",   stop: {"普通":1,"準急":1,"急行":0,"快急":0,"特急":0} },
-            { name: "津崎",   stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "虹ケ浜", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "海岸公園", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "河原崎", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
-            { name: "駒野",   stop: {"普通":1,"準急":1,"急行":0,"快急":0,"特急":0} },
-            { name: "館浜",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} }
-        ];
+        let selType = config.types[0];
+        let selDest = config.dests[0];
+
+        function init() {
+            // 種別ボタン生成
+            const tg = document.getElementById('type-grid');
+            config.types.forEach(t => {
+                const b = document.createElement('button');
+                b.innerText = t;
+                b.onclick = () => { selType = t; updateUI(); };
+                tg.appendChild(b);
+            });
+            // 行先ボタン生成
+            const dg = document.getElementById('dest-grid');
+            config.dests.forEach(d => {
+                const b = document.createElement('button');
+                b.innerText = d;
+                b.onclick = () => { selDest = d; updateUI(); };
+                dg.appendChild(b);
+            });
+            connect();
+        }
 
         function connect() {
-            const targetID = new URLSearchParams(window.location.search).get('id');
+            const id = new URLSearchParams(window.location.search).get('id');
             peer = new Peer();
             peer.on('open', () => {
-                conn = peer.connect(targetID, { reliable: true }); // 接続を高速化
-                conn.on('open', () => { 
-                    document.getElementById('status').innerText = "● 接続成功";
-                    document.getElementById('status').style.color = "#2ecc71";
-                });
+                conn = peer.connect(id, { reliable: true });
+                conn.on('open', () => { document.getElementById('status').innerText = "● 接続成功"; });
             });
-            render();
+            updateUI();
         }
 
-        function setType(btn, type) {
-            currentType = type;
-            document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            if(conn) conn.send({type: 'type', val: type});
-            render();
-        }
+        function updateUI() {
+            // ボタンのactiveクラス管理
+            document.querySelectorAll('#type-grid button').forEach(b => b.className = b.innerText === selType ? 'active' : '');
+            document.querySelectorAll('#dest-grid button').forEach(b => b.className = b.innerText === selDest ? 'active' : '');
 
-        function render() {
-            const list = document.getElementById('list'); list.innerHTML = '';
-            stationData.forEach((st, i) => {
-                const isStop = st.stop[currentType] === 1;
-                const b = document.createElement('div');
+            const list = document.getElementById('station-list');
+            list.innerHTML = '';
+            const typeIdx = config.types.indexOf(selType);
+
+            config.stations.forEach((st, i) => {
+                const isStop = st.stop[typeIdx] === 1;
+                const b = document.createElement('button');
                 b.className = `st-btn ${isStop ? 'stop' : 'pass'}`;
                 b.innerText = st.name;
-                if(isStop) b.onclick = () => {
-                    const next = stationData[i+1] ? stationData[i+1].name : "終点";
-                    if(conn) conn.send({type: 'station', now: st.name, next: next});
-                };
+                if(isStop) {
+                    b.onclick = () => {
+                        let next = "終点";
+                        for (let j = i + 1; j < config.stations.length; j++) {
+                            if (config.stations[j].stop[typeIdx] === 1) { next = config.stations[j].name; break; }
+                        }
+                        if(conn) conn.send({ type: 'update', now: st.name, next: next, trainType: selType, dest: selDest });
+                    };
+                }
                 list.appendChild(b);
             });
         }
 
         async function micOn() {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const targetID = new URLSearchParams(window.location.search).get('id');
-            call = peer.call(targetID, stream);
-            document.getElementById('mic-btn').style.background = "#fff";
+            call = peer.call(new URLSearchParams(window.location.search).get('id'), stream);
         }
-        function micOff() { if(call) call.close(); document.getElementById('mic-btn').style.background = "#ff3b30"; }
+        function micOff() { if(call) call.close(); }
     </script>
 </body>
 </html>
