@@ -3,32 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>館浜電鉄 運行指令</title>
+    <title>館浜電鉄 運行指令 V13</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #000; color: #fff; margin: 0; padding: 10px; padding-bottom: 180px; }
-        .section { font-size: 11px; color: #ffcc00; margin: 10px 0; font-weight: bold; border-left: 3px solid #ffcc00; padding-left: 5px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-        button { background: #222; border: 1px solid #444; color: #fff; padding: 12px 0; border-radius: 5px; font-size: 12px; font-weight: bold; }
-        button.active { background: #ffcc00; color: #000; }
-        .sos { background: #900; grid-column: span 3; border: 2px solid red; height: 45px; }
-        .st-btn { width: 100%; text-align: left; padding: 15px; margin-bottom: 5px; background: #111; border-left: 8px solid #444; color: #fff; font-size: 16px; }
-        #mic-wrap { position: fixed; bottom: 0; left: 0; width: 100%; background: #111; padding: 15px 0; border-top: 2px solid #333; text-align: center; z-index: 100; }
-        #mic-btn { width: 90%; height: 60px; background: #ff3b30; color: #fff; border: none; font-size: 18px; font-weight: bold; border-radius: 10px; }
+        body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 10px; padding-bottom: 180px; }
+        .section { font-size: 11px; color: #00ffcc; margin: 15px 0 5px 0; font-weight: bold; border-left: 4px solid #00ffcc; padding-left: 8px; text-transform: uppercase; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        button { background: #222; border: 1px solid #444; color: #fff; padding: 14px 0; border-radius: 6px; font-size: 12px; font-weight: bold; transition: 0.2s; }
+        button:active { background: #444; transform: scale(0.95); }
+        button.active { background: #00ffcc; color: #000; border-color: #fff; }
+        .sos { background: #900; grid-column: span 3; border: 2px solid red; height: 50px; font-size: 16px; margin-bottom: 5px; }
+        .st-btn { width: 100%; text-align: left; padding: 18px; margin-bottom: 6px; background: #1a1a1a; border-left: 10px solid #444; color: #fff; font-size: 17px; border-radius: 4px; }
+        #mic-wrap { position: fixed; bottom: 0; left: 0; width: 100%; background: #000; padding: 20px 0; border-top: 3px solid #333; text-align: center; z-index: 100; }
+        #mic-btn { width: 90%; height: 70px; background: #ff3b30; color: #fff; border: none; font-size: 20px; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(255,59,48,0.4); }
     </style>
 </head>
 <body onload="init()">
-    <div id="stat" style="text-align:center; font-size:12px; color:#aaa; margin-bottom:10px;">接続待機中...</div>
+    <div id="stat" style="text-align:center; font-size:13px; color:#00ffcc; font-weight:bold; margin-bottom:10px;">SYSTEM READY</div>
 
-    <div class="section">🚨 指令・緊急</div>
+    <div class="section">🚨 緊急・特殊操作</div>
     <div class="grid">
         <button class="sos" id="sos-btn" onclick="toggleSOS()">防護無線(SOS)発報</button>
         <button id="cut-btn" onclick="toggleCut()">3/4締切切替</button>
         <button onclick="sendTicker('平常通り運転しています。')">平常運転</button>
-        <button onclick="sendTicker('【運行情報】現在、先行列車との間隔調整のため停車しております。')">間隔調整</button>
     </div>
 
-    <div class="section">1. 種別</div>
+    <div class="section">📋 運行情報（10種追加）</div>
+    <div class="grid">
+        <button onclick="sendTicker('【運行情報】強風の影響により、一部列車に遅れが出ています。')">強風遅延</button>
+        <button onclick="sendTicker('【運行情報】車両点検を行っているため、この列車は当駅で運転を打ち切ります。')">車両点検</button>
+        <button onclick="sendTicker('【運行情報】踏切内の安全確認を行った影響で、現在5分の遅れです。')">安全確認</button>
+        <button onclick="sendTicker('【お知らせ】車内での携帯電話による通話はご遠慮ください。')">携帯マナー</button>
+        <button onclick="sendTicker('【運行情報】先行列車との間隔調整のため、しばらく停車いたします。')">間隔調整</button>
+        <button onclick="sendTicker('【注意】現在、雨の影響により路面が滑りやすくなっております。')">雨天注意</button>
+        <button onclick="sendTicker('【運行情報】お客様同士のトラブルの影響で、ダイヤが乱れています。')">トラブル</button>
+        <button onclick="sendTicker('【お知らせ】忘れ物が多くなっております。お降りの際は足元にご注意ください。')">忘れ物</button>
+        <button onclick="sendTicker('【運行情報】架線に付着物があったため、現在除去作業を行っています。')">架線付着物</button>
+        <button onclick="sendTicker('【運行情報】信号機トラブルのため、全線で運転を見合わせています。')">運転見合わせ</button>
+    </div>
+
+    <div class="section">1. 種別設定</div>
     <div id="type-grid" class="grid"></div>
 
     <div class="section">2. 行先・方面</div>
@@ -45,10 +59,10 @@
         <button style="background:#2980b9" onclick="sendDoor('close')">ドア全閉</button>
     </div>
 
-    <div class="section">4. 現在駅選択（停車駅連動）</div>
+    <div class="section">4. 現在駅（自動連動）</div>
     <div id="station-list"></div>
 
-    <div id="mic-wrap"><button id="mic-btn">🎤 指令・放送 (長押しで通話)</button></div>
+    <div id="mic-wrap"><button id="mic-btn">🎤 放送開始 (長押し)</button></div>
 
     <script>
         const config = {
@@ -79,7 +93,9 @@
                 b.onclick = () => { selDest = st.name; updateUI(); }; document.getElementById('dest-grid').appendChild(b);
             });
             const mb = document.getElementById('mic-btn');
-            mb.onpointerdown = (e) => { e.preventDefault(); micOn(); }; mb.onpointerup = micOff;
+            mb.addEventListener('touchstart', (e) => { e.preventDefault(); micOn(); }, {passive: false});
+            mb.addEventListener('touchend', micOff);
+            mb.onmousedown = micOn; mb.onmouseup = micOff;
             connect();
         }
 
@@ -89,8 +105,7 @@
             peer.on('open', () => {
                 conn = peer.connect(id);
                 conn.on('open', () => { 
-                    document.getElementById('stat').innerText = "指令接続中";
-                    document.getElementById('stat').style.color = "#2ecc71";
+                    document.getElementById('stat').innerText = "CONNECTED";
                     updateUI();
                 });
             });
@@ -129,12 +144,12 @@
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
                 peer.call(new URLSearchParams(window.location.search).get('id'), localStream);
-                document.getElementById('mic-btn').style.background = "#2ecc71";
-            } catch(e) { alert("マイク使用不可"); }
+                document.getElementById('mic-btn').innerText = "🎤 放送中...";
+            } catch(e) { console.log(e); }
         }
         function micOff() { 
             if(localStream) localStream.getTracks().forEach(t => t.stop()); 
-            document.getElementById('mic-btn').style.background = "#ff3b30";
+            document.getElementById('mic-btn').innerText = "🎤 放送開始 (長押し)";
         }
     </script>
 </body>
