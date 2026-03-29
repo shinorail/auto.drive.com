@@ -3,77 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>操作盤</title>
+    <title>館浜電鉄 操作盤</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #000; color: #fff; margin: 0; padding: 10px; }
-        .btn { background: #333; border: none; color: #fff; padding: 20px 10px; border-radius: 8px; font-weight: bold; width: 100%; margin-bottom: 10px; font-size: 16px; }
-        .btn:active { background: #555; }
-        input { width: 100%; padding: 15px; margin-bottom: 15px; background: #222; border: 1px solid #444; color: #fff; border-radius: 5px; box-sizing: border-box; }
-        h3 { color: #888; font-size: 14px; margin-bottom: 10px; }
-        #mic-btn { background: #ff3b30; height: 80px; font-size: 20px; position: fixed; bottom: 0; left: 0; margin: 0; border-radius: 0; }
+        body { font-family: sans-serif; background: #111; color: white; margin: 0; padding: 15px; }
+        .section { background: #222; border-radius: 10px; padding: 10px; margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        button { background: #333; border: none; color: white; padding: 15px 5px; border-radius: 5px; font-weight: bold; font-size: 13px; }
+        button.active { background: #ffcc00; color: #000; }
+        
+        .st-btn { width: 100%; text-align: left; padding: 15px; margin-bottom: 5px; background: #2c2c2e; border-left: 8px solid #444; display: flex; justify-content: space-between; }
+        /* 停車駅のスタイル */
+        .stop { border-left-color: #2ecc71; opacity: 1; }
+        /* 通過駅のスタイル（無効化） */
+        .pass { border-left-color: #555; opacity: 0.2; pointer-events: none; }
+        
+        #status { text-align: center; font-size: 12px; margin-bottom: 10px; color: #e74c3c; }
     </style>
 </head>
-<body onload="init()">
-    <h3>路線設定</h3>
-    <input type="text" id="line-input" placeholder="路線名を入力して確定" onchange="sendData('line', this.value)">
+<body onload="connect()">
+    <div id="status">未接続</div>
 
-    <h3>種別・行先</h3>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <button class="btn" onclick="sendData('type', '普通')">普通</button>
-        <button class="btn" onclick="sendData('type', '快速')">快速</button>
-        <button class="btn" onclick="sendData('dest', '新井川')">新井川 行</button>
-        <button class="btn" onclick="sendData('dest', '館浜')">館浜 行</button>
+    <div class="section">
+        <div class="grid">
+            <button class="t-btn active" onclick="setType(this, '普通')">普通</button>
+            <button class="t-btn" onclick="setType(this, '準急')">準急</button>
+            <button class="t-btn" onclick="setType(this, '急行')">急行</button>
+            <button class="t-btn" onclick="setType(this, '快急')">快急</button>
+            <button class="t-btn" onclick="setType(this, '特急')">特急</button>
+        </div>
     </div>
 
-    <h3>駅名指示</h3>
-    <div id="st-buttons"></div>
-
-    <button id="mic-btn" class="btn" ontouchstart="micOn()" ontouchend="micOff()">🎤 放送開始 (長押し)</button>
+    <div id="station-list"></div>
 
     <script>
-        let conn, peer, call;
-        const sts = ["館浜", "駒野", "河原崎", "海岸公園", "虹ケ浜", "津崎", "浜園", "羽衣橋", "新井川"];
+        let conn;
+        let currentType = "普通";
+        
+        // 停車駅データ (1:停車, 0:通過)
+        const stationData = [
+            { name: "赤山町", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} },
+            { name: "西赤山", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
+            { name: "奥峯口", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
+            { name: "日野森", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
+            { name: "高見沢", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
+            { name: "水越",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
+            { name: "藤江",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
+            { name: "大道寺", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} },
+            { name: "江ノ原", stop: {"普通":1,"準急":1,"急行":1,"快急":0,"特急":0} },
+            { name: "新野崎", stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":0} },
+            { name: "新井川", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
+            { name: "羽衣橋", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
+            { name: "浜園",   stop: {"普通":1,"準急":1,"急行":0,"快急":0,"特急":0} },
+            { name: "津崎",   stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
+            { name: "虹ケ浜", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
+            { name: "海岸公園", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
+            { name: "河原崎", stop: {"普通":1,"準急":0,"急行":0,"快急":0,"特急":0} },
+            { name: "駒野",   stop: {"普通":1,"準急":1,"急行":0,"快急":0,"特急":0} },
+            { name: "館浜",   stop: {"普通":1,"準急":1,"急行":1,"快急":1,"特急":1} }
+        ];
 
-        function init() {
-            const targetID = new URLSearchParams(window.location.search).get('id');
-            if(!targetID) return alert("QRコードから開き直してください");
-
-            peer = new Peer();
+        function connect() {
+            const id = new URLSearchParams(window.location.search).get('id') || "TATEHAMA-MAIN-SYSTEM";
+            const peer = new Peer();
             peer.on('open', () => {
-                conn = peer.connect(targetID);
-                conn.on('open', () => { console.log("Connected"); });
-                conn.on('error', (err) => { alert("接続エラー: " + err); });
+                conn = peer.connect(id);
+                conn.on('open', () => {
+                    document.getElementById('status').innerText = "● 接続中";
+                    document.getElementById('status').style.color = "#2ecc71";
+                });
             });
+            renderStations();
+        }
 
-            // 駅ボタン生成
-            const container = document.getElementById('st-buttons');
-            sts.forEach(s => {
+        function setType(btn, type) {
+            currentType = type;
+            document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if(conn) conn.send({type: 'type', val: type});
+            renderStations();
+        }
+
+        function renderStations() {
+            const list = document.getElementById('station-list');
+            list.innerHTML = '';
+            stationData.forEach(st => {
+                const isStop = st.stop[currentType] === 1;
                 const b = document.createElement('button');
-                b.className = 'btn';
-                b.innerText = s;
-                b.onclick = () => sendData('station', s);
-                container.appendChild(b);
+                b.className = `st-btn ${isStop ? 'stop' : 'pass'}`;
+                b.innerHTML = `<span>${st.name}</span> <small>${isStop ? '停車' : '通過'}</small>`;
+                if(isStop) {
+                    b.onclick = () => { if(conn) conn.send({type: 'next', val: st.name}); };
+                }
+                list.appendChild(b);
             });
         }
-
-        function sendData(type, val) {
-            if (conn && conn.open) {
-                conn.send({type, val});
-            } else {
-                alert("PCに接続されていません。再読み込みしてください。");
-            }
-        }
-
-        async function micOn() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const targetID = new URLSearchParams(window.location.search).get('id');
-                call = peer.call(targetID, stream);
-                document.getElementById('mic-btn').style.background = "#28a745";
-            } catch (e) { alert("マイクが使えません"); }
-        }
-        function micOff() { if(call) call.close(); document.getElementById('mic-btn').style.background = "#ff3b30"; }
     </script>
 </body>
 </html>
